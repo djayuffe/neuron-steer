@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neuron-steer"
+version = "0.1.0"
+description = "Standalone offline Transformers neuron steering and paired evaluation"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = []
+
+[project.optional-dependencies]
+runtime = ["torch>=2.2", "transformers>=4.40", "safetensors>=0.4"]
+
+[project.scripts]
+neuron-steer = "neuron_steer.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["neuron_steer*"]
+
+[tool.setuptools.package-data]
+neuron_steer = ["prompts/*.json"]

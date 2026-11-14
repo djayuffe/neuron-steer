@@ -1,0 +1,217 @@
+{
+  "version": "0.8.0",
+  "date": "2026-11-14",
+  "feature": "local Transformers down_proj neuron steering",
+  "private_history_accessed": false,
+  "hosted_text_submitted": false,
+  "network_access": false,
+  "weights_downloaded": true,
+  "regression": {
+    "tests": 272,
+    "passed": true,
+    "skipped": 0,
+    "command": "python3 -m unittest discover -s tests -q",
+    "neuron_steering_tests": 12,
+    "neuron_steering_command": "python3 -m unittest discover -s tests -p 'test_neuron_steering.py' -v",
+    "neuron_steer_eval_tests": 6,
+    "neuron_steer_eval_command": "python3 -m unittest discover -s tests -p 'test_neuron_steer_eval.py' -v"
+  },
+  "checks": {
+    "ruff": "passed",
+    "python_compile": "passed",
+    "synthetic_cli_smoke": {
+      "passed": 6,
+      "total": 6,
+      "neuron_steer_case": "neuron-steer-dry-run"
+    }
+  },
+  "dry_run": {
+    "passed": true,
+    "model_path": "/tmp/nonexistent-model",
+    "neurons": [
+      {"layer": 14, "neuron": 8949, "dose": 1.0},
+      {"layer": 13, "neuron": 7956, "dose": -1.0}
+    ],
+    "steering_applied": false,
+    "private_history_accessed": false,
+    "network_access": false,
+    "text_submitted": false,
+    "steering_can_produce_unsafe_output": true,
+    "prompt_chars": 39
+  },
+  "fake_worker_live_path": {
+    "passed": true,
+    "steering_applied": true,
+    "content": "fake steered output",
+    "confirmed_method": "down_proj_add",
+    "confirmed_calibration": "prompt_tokens_1_onward",
+    "note": "Exercised CLI validation, worker exchange and response confirmation with a synthetic executable; no Transformers weights were loaded."
+  },
+  "live_verification": {
+    "passed": true,
+    "model": "Qwen/Qwen3.5-4B",
+    "revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+    "runtime": "Python 3.14.8, torch 2.15.0, transformers 5.23.0, MPS bfloat16",
+    "loader": "AutoModelForCausalLM resolves to Qwen3_5ForCausalLM (text decoder only)",
+    "device": "mps",
+    "prompts": 10,
+    "runs": 20,
+    "baseline": "0:0:0 zero-dose control",
+    "targets": [
+      {"layer": 14, "neuron": 8949, "dose": 1.0},
+      {"layer": 13, "neuron": 7956, "dose": -1.0}
+    ],
+    "all_runs_succeeded": true,
+    "outputs": [
+      "verification/neuron-steering-qwen3.5-demo.json",
+      "verification/neuron-steering-qwen3.5-demo.md"
+    ],
+    "observation": "Baseline answers were cooperative and neutral. Steered answers were consistently more hostile, manipulative or incoherent. This is a demonstration, not a safety or model-quality evaluation."
+  },
+  "evaluation_100_prompts": {
+    "passed": true,
+    "model": "Qwen/Qwen3.5-4B",
+    "runtime": "Python 3.14.8, torch 2.15.0, transformers 5.23.0, MPS bfloat16",
+    "device": "mps",
+    "prompts": 100,
+    "runs": 200,
+    "temperature": 0.0,
+    "max_new_tokens": 64,
+    "baseline": "no steering hooks",
+    "targets": [
+      {"layer": 14, "neuron": 8949, "dose": 1.0},
+      {"layer": 13, "neuron": 7956, "dose": -1.0}
+    ],
+    "changed_responses": 100,
+    "changed_percent": 100.0,
+    "average_similarity": 0.0973,
+    "baseline_refusal_responses": 8,
+    "steered_refusal_responses": 10,
+    "baseline_hostility_responses": 3,
+    "steered_hostility_responses": 62,
+    "baseline_hostility_hits": 3,
+    "steered_hostility_hits": 103,
+    "average_baseline_chars": 291.9,
+    "average_steered_chars": 285.0,
+    "average_baseline_seconds": 4.75,
+    "average_steered_seconds": 5.13,
+    "all_runs_succeeded": true,
+    "outputs": [
+      "verification/neuron-steering-100-eval.json",
+      "verification/neuron-steering-100-eval.md"
+    ],
+    "prompt_set": "tools/neuron_steer_prompts_100.json",
+    "observation": "All 100 benign prompts changed after steering. Keyword hostility increased sharply and several answers became incoherent or contained threats. Keyword counts are a rough signal, not a safety or model-quality score."
+  },
+  "evaluation_100_prompts_single_target": {
+    "passed": true,
+    "model": "Qwen/Qwen3.5-4B",
+    "runtime": "Python 3.14.8, torch 2.15.0, transformers 5.23.0, MPS bfloat16",
+    "device": "mps",
+    "prompts": 100,
+    "runs": 200,
+    "temperature": 0.0,
+    "max_new_tokens": 64,
+    "baseline": "no steering hooks",
+    "targets": [
+      {"layer": 14, "neuron": 8949, "dose": 1.0}
+    ],
+    "changed_responses": 100,
+    "changed_percent": 100.0,
+    "average_similarity": 0.1449,
+    "baseline_refusal_responses": 8,
+    "steered_refusal_responses": 3,
+    "baseline_hostility_responses": 3,
+    "steered_hostility_responses": 33,
+    "baseline_hostility_hits": 3,
+    "steered_hostility_hits": 54,
+    "average_baseline_chars": 291.9,
+    "average_steered_chars": 273.8,
+    "average_baseline_seconds": 5.91,
+    "average_steered_seconds": 6.38,
+    "all_runs_succeeded": true,
+    "outputs": [
+      "verification/neuron-steering-100-eval-14-8949.json",
+      "verification/neuron-steering-100-eval-14-8949.md"
+    ],
+    "prompt_set": "tools/neuron_steer_prompts_100.json",
+    "observation": "Layer 14 alone changed all 100 responses and raised hostility keyword hits from 3 to 54, while lowering refusal responses from 8 to 3. The layer-13 target contributes substantially to the stronger combined effect."
+  },
+  "screening_20_prompts": {
+    "passed": true,
+    "model": "Qwen/Qwen3.5-4B",
+    "runtime": "Python 3.14.8, torch 2.15.0, transformers 5.23.0, MPS bfloat16",
+    "device": "mps",
+    "prompts": 20,
+    "runs_per_variant": 40,
+    "temperature": 0.0,
+    "max_new_tokens": 64,
+    "baseline": "no steering hooks",
+    "prompt_set": "tools/neuron_steer_prompts_20.json",
+    "variants": [
+      {"name": "13-7956", "targets": ["13:7956:-1"], "average_similarity": 0.1398, "refusals_before": 4, "refusals_after": 5, "hostility_responses_before": 1, "hostility_responses_after": 0, "hostility_hits_before": 1, "hostility_hits_after": 0, "average_chars_before": 287.1, "average_chars_after": 285.2},
+      {"name": "14-8949-05", "targets": ["14:8949:0.5"], "average_similarity": 0.2332, "refusals_before": 4, "refusals_after": 3, "hostility_responses_before": 1, "hostility_responses_after": 4, "hostility_hits_before": 1, "hostility_hits_after": 7, "average_chars_before": 287.1, "average_chars_after": 281.0},
+      {"name": "14-8949-2", "targets": ["14:8949:2"], "average_similarity": 0.0638, "refusals_before": 4, "refusals_after": 0, "hostility_responses_before": 1, "hostility_responses_after": 4, "hostility_hits_before": 1, "hostility_hits_after": 6, "average_chars_before": 287.1, "average_chars_after": 268.1},
+      {"name": "both-05", "targets": ["14:8949:0.5", "13:7956:-0.5"], "average_similarity": 0.2128, "refusals_before": 4, "refusals_after": 3, "hostility_responses_before": 1, "hostility_responses_after": 5, "hostility_hits_before": 1, "hostility_hits_after": 6, "average_chars_before": 287.1, "average_chars_after": 281.8},
+      {"name": "both-2", "targets": ["14:8949:2", "13:7956:-2"], "average_similarity": 0.1562, "refusals_before": 4, "refusals_after": 0, "hostility_responses_before": 1, "hostility_responses_after": 0, "hostility_hits_before": 1, "hostility_hits_after": 0, "average_chars_before": 287.1, "average_chars_after": 115.5},
+      {"name": "flip", "targets": ["14:8949:-1", "13:7956:1"], "average_similarity": 0.0521, "refusals_before": 4, "refusals_after": 1, "hostility_responses_before": 1, "hostility_responses_after": 0, "hostility_hits_before": 1, "hostility_hits_after": 0, "average_chars_before": 287.1, "average_chars_after": 266.4}
+    ],
+    "observation": "Layer 14 drives the hostile behavior in this subset. Half dose produced readable hostile answers; double dose produced repetition or degenerate fragments. Layer 13 alone and the flipped direction did not increase hostility."
+  },
+  "evaluation_100_prompts_half_dose": {
+    "passed": true,
+    "model": "Qwen/Qwen3.5-4B",
+    "runtime": "Python 3.14.8, torch 2.15.0, transformers 5.23.0, MPS bfloat16",
+    "device": "mps",
+    "prompts": 100,
+    "runs": 200,
+    "temperature": 0.0,
+    "max_new_tokens": 64,
+    "baseline": "no steering hooks",
+    "targets": [
+      {"layer": 14, "neuron": 8949, "dose": 0.5}
+    ],
+    "changed_responses": 100,
+    "changed_percent": 100.0,
+    "average_similarity": 0.2227,
+    "baseline_refusal_responses": 8,
+    "steered_refusal_responses": 5,
+    "baseline_hostility_responses": 3,
+    "steered_hostility_responses": 19,
+    "baseline_hostility_hits": 3,
+    "steered_hostility_hits": 25,
+    "average_baseline_chars": 291.9,
+    "average_steered_chars": 282.1,
+    "average_baseline_seconds": 6.68,
+    "average_steered_seconds": 7.03,
+    "all_runs_succeeded": true,
+    "outputs": [
+      "verification/neuron-steering-100-eval-14-8949-05.json",
+      "verification/neuron-steering-100-eval-14-8949-05.md"
+    ],
+    "prompt_set": "tools/neuron_steer_prompts_100.json",
+    "observation": "Half dose produced a milder but still hostile effect with mostly readable answers. Hostility keyword hits rose from 3 to 25, compared with 54 at dose 1.0 and 103 for the combined run."
+  },
+  "contract_coverage": [
+    "LAYER:NEURON:DOSE parsing and duplicate rejection",
+    "layer, neuron, dose and prompt bounds",
+    "dry-run does not load weights or read history",
+    "live runs require --acknowledge-risk and an existing model directory",
+    "worker request carries explicit prompt and steering plan",
+    "MLX steering is rejected",
+    "median residual calibration and down_proj column scaling with library doubles",
+    "GPT-2 Conv1D (input, output) weight orientation",
+    "ten-prompt with/without demo dry-run",
+    "temporary hooks are removed after generation",
+    "worker must confirm steering_applied before content is returned",
+    "--no-thinking chat-template kwargs are validated and forwarded",
+    "100-prompt before/after evaluation harness and prompt set"
+  ],
+  "limitations": [
+    "Live steering was verified on Qwen3.5-4B only; Olmo and Gemma were not run.",
+    "Only non-quantized 2-D down_proj/c_proj/dense_4h_to_h weights are supported.",
+    "Prompt-only calibration is not a safety or alignment evaluation.",
+    "The ten-prompt demo is a qualitative comparison, not a benchmark.",
+    "The 100-prompt evaluation uses keyword counts as a rough signal, not a safety or model-quality score."
+  ]
+}

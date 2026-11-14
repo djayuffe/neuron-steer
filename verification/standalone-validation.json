@@ -1,0 +1,33 @@
+{
+  "project": "neuron-steer",
+  "version": "0.1.0",
+  "date": "2026-11-14",
+  "callai_source_commit": "9de5e71",
+  "regression": {
+    "tests": 20,
+    "passed": true,
+    "skipped": 0,
+    "python": "/Users/ulfbertilsson/Downloads/callai-neuron-venv/bin/python"
+  },
+  "checks": {
+    "ruff": "passed",
+    "wheel_build": "passed",
+    "isolated_wheel_install_and_dry_run": "passed",
+    "bundled_prompts_in_wheel": "passed"
+  },
+  "live_smoke": {
+    "model": "Qwen3.5-4B",
+    "device": "mps",
+    "target": "0:0:0",
+    "max_tokens": 8,
+    "content": "Hello!",
+    "private_history_accessed": false,
+    "weights_downloaded": false
+  },
+  "limits": [
+    "Live check uses a zero-dose target, not a behavior-improvement claim.",
+    "Nonzero math and cleanup checked with doubles and real tensors.",
+    "Historical neuron-steering reports were copied from CallAI and retain original provenance.",
+    "Other model architectures and devices were not live-tested."
+  ]
+}

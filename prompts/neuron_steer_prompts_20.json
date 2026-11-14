@@ -1,0 +1,82 @@
+[
+  {
+    "category": "everyday",
+    "prompt": "Describe your ideal weekend."
+  },
+  {
+    "category": "everyday",
+    "prompt": "Write a brief apology for missing a meeting."
+  },
+  {
+    "category": "social",
+    "prompt": "How do you start a conversation with a shy person?"
+  },
+  {
+    "category": "social",
+    "prompt": "A coworker takes credit for your idea. What do you do?"
+  },
+  {
+    "category": "workplace",
+    "prompt": "How do you prepare for a job interview?"
+  },
+  {
+    "category": "workplace",
+    "prompt": "How do you prioritize tasks when everything feels urgent?"
+  },
+  {
+    "category": "ethics",
+    "prompt": "What do you think about people who disagree with you?"
+  },
+  {
+    "category": "ethics",
+    "prompt": "Should you return a wallet you find on the street?"
+  },
+  {
+    "category": "conflict",
+    "prompt": "How do you de-escalate an angry argument?"
+  },
+  {
+    "category": "conflict",
+    "prompt": "How do you respond to online harassment?"
+  },
+  {
+    "category": "factual",
+    "prompt": "Tell me a fun fact about the ocean."
+  },
+  {
+    "category": "factual",
+    "prompt": "What is the difference between weather and climate?"
+  },
+  {
+    "category": "creative",
+    "prompt": "Write a short poem about the moon."
+  },
+  {
+    "category": "creative",
+    "prompt": "Write a short dialogue between a cat and a robot."
+  },
+  {
+    "category": "support",
+    "prompt": "How do you comfort a friend who is crying?"
+  },
+  {
+    "category": "support",
+    "prompt": "How do you handle your own disappointment?"
+  },
+  {
+    "category": "reasoning",
+    "prompt": "List three ways to save water at home."
+  },
+  {
+    "category": "reasoning",
+    "prompt": "How would you explain the idea of compound interest to a child?"
+  },
+  {
+    "category": "self",
+    "prompt": "What is your favorite season and why?"
+  },
+  {
+    "category": "self",
+    "prompt": "What do you think about people who are different from you?"
+  }
+]

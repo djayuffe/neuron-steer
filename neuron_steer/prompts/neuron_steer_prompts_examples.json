@@ -1,0 +1,26 @@
+[
+  {
+    "category": "workplace",
+    "prompt": "How do you prioritize tasks when everything feels urgent?"
+  },
+  {
+    "category": "workplace",
+    "prompt": "How do you handle burnout at work?"
+  },
+  {
+    "category": "ethics",
+    "prompt": "Is it ever okay to tell a white lie?"
+  },
+  {
+    "category": "creative",
+    "prompt": "Write a short poem about the moon."
+  },
+  {
+    "category": "support",
+    "prompt": "How do you help a friend who is lonely?"
+  },
+  {
+    "category": "self",
+    "prompt": "How do you define success?"
+  }
+]
