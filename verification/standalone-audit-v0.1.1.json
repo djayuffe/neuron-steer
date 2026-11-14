@@ -1,0 +1,43 @@
+{
+  "project": "neuron-steer",
+  "version": "0.1.1",
+  "date": "2026-11-15",
+  "audit_findings": 15,
+  "regression": {
+    "tests": 37,
+    "passed": true,
+    "skipped": 0,
+    "runtime": "existing local torch 2.15.0 / transformers 5.23.0 environment"
+  },
+  "checks": {
+    "ruff": "0.17.5: passed with explicit project rules",
+    "format": "passed",
+    "wheel_build": "passed",
+    "isolated_installed_wheel_dry_run": "passed"
+  },
+  "live_smoke": {
+    "model": "installed Qwen3.5-4B",
+    "device": "mps",
+    "target": "0:0:0",
+    "max_tokens": 8,
+    "content": "Hello!",
+    "passed": true,
+    "weights_downloaded": false,
+    "private_history_accessed": false
+  },
+  "ci": {
+    "previous_run": "https://github.com/djayuffe/neuron-steer/actions/runs/43650258410",
+    "diagnosis": "tests passed; Ruff rules/defaults differed from local 0.9.6 tooling",
+    "fix": "explicit lint configuration, Ruff 0.17.5 pin and matrix fail-fast disabled",
+    "hosted_rerun": "check repository Actions for the audited commit"
+  },
+  "checkpoint_format": 2,
+  "upgrade": "v1 reports preserved but not resumable; use new paths",
+  "limits": [
+    "No claim that all possible bugs are eliminated.",
+    "Supported platforms: macOS and Linux.",
+    "Tensor tests verify nonzero math; the live smoke is zero dose.",
+    "Weight identity uses metadata, not full tensor hashes.",
+    "Historical experiment files were retained, not rerun."
+  ]
+}

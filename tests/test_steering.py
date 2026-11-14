@@ -1,12 +1,13 @@
 import contextlib
 import types
 import unittest
+
 from neuron_steer.steering import (
-    parse_specs,
-    install_steering,
     NeuronSteerError,
-    validate_prompt,
+    install_steering,
+    parse_specs,
     validate_generation_options,
+    validate_prompt,
 )
 
 
@@ -203,7 +204,12 @@ class SteeringTests(unittest.TestCase):
             {"seed": 100000001},
             {"context_size": -1},
         ]:
-            defaults = dict(max_tokens=10, temperature=0, context_size=0, seed=0)
+            defaults = {
+                "max_tokens": 10,
+                "temperature": 0,
+                "context_size": 0,
+                "seed": 0,
+            }
             defaults.update(values)
             with self.assertRaises(NeuronSteerError):
                 validate_generation_options(**defaults)

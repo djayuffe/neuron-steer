@@ -8,10 +8,12 @@ import select
 import subprocess
 import sys
 import time
+
 from . import __version__
-from .steering import NeuronSteerError, formula, MAX_PROMPT_BYTES
 from .jobs import validate_job
 from .process import bounded_run
+from .steering import MAX_PROMPT_BYTES, NeuronSteerError, formula
+from .storage import strict_json
 
 
 def parser():
@@ -105,9 +107,9 @@ def main(argv=None):
             job["prompt"] = read_prompt(deadline)
         if args.operation == "evaluate":
             job["prompts"] = str(pathlib.Path(args.prompts).expanduser().resolve())
-            job["output"] = str(pathlib.Path(args.output).expanduser().resolve())
+            job["output"] = str(pathlib.Path(args.output).expanduser().absolute())
             job["markdown_out"] = (
-                str(pathlib.Path(args.markdown_out).expanduser().resolve())
+                str(pathlib.Path(args.markdown_out).expanduser().absolute())
                 if args.markdown_out
                 else str(pathlib.Path(job["output"]).with_suffix(".md"))
             )
@@ -145,11 +147,16 @@ def main(argv=None):
             print(result.stderr, file=sys.stderr, end="")
         if result.returncode:
             try:
-                detail = json.loads(result.stdout).get("error", "worker failed")
+                error_payload = strict_json(result.stdout)
+                detail = (
+                    error_payload.get("error", "worker failed")
+                    if isinstance(error_payload, dict)
+                    else "invalid worker diagnostic"
+                )
             except ValueError:
                 detail = "worker failed without a JSON diagnostic"
             raise NeuronSteerError(str(detail)[:1000])
-        payload = json.loads(result.stdout)
+        payload = strict_json(result.stdout)
         if not isinstance(payload, dict) or payload.get("error"):
             raise NeuronSteerError("invalid worker response")
         print(

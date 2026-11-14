@@ -1,0 +1,32 @@
+{
+  "version": "0.1.1",
+  "private_history_accessed": false,
+  "operation": "generate",
+  "runtime": {
+    "python_model_path": "/Users/ulfbertilsson/Downloads/models/Qwen3.5-4B",
+    "device": "mps",
+    "torch": "2.15.0",
+    "transformers": "5.23.0",
+    "offline_loading": true
+  },
+  "content": "Hello!",
+  "tokens": 5,
+  "input_tokens": 39,
+  "reached_token_budget": false,
+  "elapsed_seconds": 5.161,
+  "steering": {
+    "applied": true,
+    "method": "down_proj_add",
+    "calibration": "prompt_tokens_1_onward",
+    "neurons": [
+      {
+        "layer": 0,
+        "neuron": 0,
+        "dose": 0.0,
+        "median_residual_norm": 2.423383951187134,
+        "down_proj_column_norm": 0.34716886281967163,
+        "scale": 0.0
+      }
+    ]
+  }
+}

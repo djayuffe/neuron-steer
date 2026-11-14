@@ -2,7 +2,9 @@ import contextlib
 import types
 import unittest
 from unittest import mock
-from test_steering import FakeModel, FakeBlock, FakeDown, FakeTokenizer, FakeScalar
+
+from test_steering import FakeBlock, FakeDown, FakeModel, FakeScalar, FakeTokenizer
+
 from neuron_steer.runtime import LocalRuntime, build_chat_prompt
 from neuron_steer.steering import ModelContextOverflow
 
@@ -27,7 +29,7 @@ class RuntimeTests(unittest.TestCase):
     def test_generate_and_cleanup(self):
         runtime = self.runtime()
         output = runtime.generate(
-            "synthetic", [dict(layer=0, neuron=1, dose=1)], max_tokens=4, seed=5
+            "synthetic", [{"layer": 0, "neuron": 1, "dose": 1}], max_tokens=4, seed=5
         )
         self.assertEqual(output["content"], "steered output")
         self.assertEqual(output["tokens"], 1)
@@ -42,7 +44,7 @@ class RuntimeTests(unittest.TestCase):
         runtime.model.generate = mock.Mock(side_effect=RuntimeError("test failure"))
         with self.assertRaises(RuntimeError):
             runtime.generate(
-                "synthetic", [dict(layer=0, neuron=1, dose=1)], max_tokens=4
+                "synthetic", [{"layer": 0, "neuron": 1, "dose": 1}], max_tokens=4
             )
         self.assertTrue(
             all(h.removed for h in runtime.model.model.layers[0].mlp.down_proj.hooks)

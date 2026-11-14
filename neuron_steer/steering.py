@@ -17,7 +17,8 @@ are bundled, and the module never touches model weights on disk.
 from __future__ import annotations
 
 import math
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 MAX_STEERS = 8
 MAX_LAYER = 255
@@ -110,13 +111,19 @@ def validate_generation_options(
     *, max_tokens: int, temperature: float, context_size: int, seed: int | None
 ) -> None:
     """Validate generation settings shared by the CLI and evaluation harness."""
-    if not 1 <= max_tokens <= MAX_TOKENS:
+    if type(max_tokens) is not int or not 1 <= max_tokens <= MAX_TOKENS:
         raise NeuronSteerError(f"--max-tokens must be 1-{MAX_TOKENS}")
-    if not math.isfinite(temperature) or not 0 <= temperature <= 2:
+    if (
+        type(temperature) not in (int, float)
+        or not math.isfinite(temperature)
+        or not 0 <= temperature <= 2
+    ):
         raise NeuronSteerError("--temperature must be finite and 0-2")
-    if not 0 <= context_size <= MAX_CONTEXT_SIZE:
+    if type(context_size) is not int or not 0 <= context_size <= MAX_CONTEXT_SIZE:
         raise NeuronSteerError(f"--context-size must be 0-{MAX_CONTEXT_SIZE}")
-    if seed is not None and not -MAX_SEED <= seed <= MAX_SEED:
+    if seed is not None and (
+        type(seed) is not int or not -MAX_SEED <= seed <= MAX_SEED
+    ):
         raise NeuronSteerError(f"--seed must be between -{MAX_SEED} and {MAX_SEED}")
 
 
@@ -210,6 +217,13 @@ def install_steering(model: Any, encoded: Any, specs: list[dict[str, Any]], torc
                         f"neuron {neuron} is outside layer {layer} down_proj"
                     )
                 column = weight[:, neuron].detach()
+            floating = getattr(weight, "is_floating_point", None)
+            if getattr(weight, "is_quantized", False) or (
+                callable(floating) and not floating()
+            ):
+                raise NeuronSteerError(
+                    "neuron steering requires dense floating-point projection weights"
+                )
             column_norm = float(torch.linalg.vector_norm(column.float()).item())
             if not math.isfinite(column_norm) or column_norm <= 0:
                 raise NeuronSteerError(
@@ -221,7 +235,13 @@ def install_steering(model: Any, encoded: Any, specs: list[dict[str, Any]], torc
             scale = dose * median_norm / column_norm
             if not math.isfinite(scale):
                 raise NeuronSteerError("non-finite steering scale")
-            vector = column * scale
+            vector = (column.float() * scale).to(
+                dtype=column.dtype, device=column.device
+            )
+            if hasattr(torch, "isfinite") and not bool(
+                torch.isfinite(vector).all().item()
+            ):
+                raise NeuronSteerError("steering vector overflows the projection dtype")
 
             def hook(module, inputs, output, vector=vector):
                 if isinstance(output, tuple):

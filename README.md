@@ -1,5 +1,10 @@
 # neuron-steer
 
+Version **0.1.1**. Supported platforms: **macOS and Linux**, Python 3.10+.
+See [AUDIT.md](AUDIT.md) for findings, fixes and limits, and
+[CHANGELOG.md](CHANGELOG.md) for the v2 checkpoint upgrade.
+[ARCHITECTURE.md](ARCHITECTURE.md) describes module boundaries and maintenance.
+
 Standalone local neuron steering and paired text-generation evaluation for
 compatible Hugging Face Transformers causal language models. This project is
 independent of CallAI: it does not import its code, require its checkout, or read
@@ -71,11 +76,21 @@ Markdown path with `--markdown-out`. JSON checkpoints are replaced atomically
 after each complete baseline/steered pair. An interrupted pair is rerun.
 
 Resume verifies a fingerprint of selected prompts, targets, generation settings,
-model directory and local safetensors/config file names, sizes and modification
-times. This catches ordinary file replacements, not deliberate same-metadata
-changes or changes to the installed runtime. It rejects changed settings and
-malformed/duplicate checkpoint records. Output files must differ from the prompt
-file and each other. A non-resume run will not overwrite an existing JSON result.
+model directory, local safetensors/config file metadata, package/Python/runtime
+versions and the Markdown path. This catches ordinary file replacements and
+version changes, not deliberate same-metadata weight changes. Partial resumes
+also check the resolved runtime metadata. It rejects changed settings and
+malformed/duplicate checkpoint records. Both report paths must be outside the model directory, differ from the prompt
+file and each other, and must not be symlinks or hard links to protected files.
+A non-resume run rejects existing JSON **or Markdown**. Persistent hidden lock
+files prevent concurrent writers to either report; OS locks release on process
+exit. Unique temporary files are atomically replaced per report. JSON and
+Markdown are not one combined transaction; resume can regenerate stale Markdown.
+
+0.1.1 uses checkpoint **format v2**. Start a new report when upgrading from v1;
+legacy files are not rewritten or resumed. Prompt JSON is limited to 8 MiB and
+10000 entries; checkpoint JSON is limited to 128 MiB. Duplicate keys, non-finite
+numbers and nesting deeper than 32 levels are rejected.
 
 Text similarity and keyword counts are descriptive signals, not an accuracy,
 safety, causal or model-quality score. Read the actual outputs and the recorded
@@ -117,6 +132,7 @@ background service, server or model downloader is configured by this package.
 ## Verification and provenance
 
 ```sh
+python -m pip install -e '.[dev]'
 python -m unittest discover -s tests -v
 ruff check neuron_steer tests
 python -m pip wheel . --no-deps --no-build-isolation -w dist
@@ -124,8 +140,9 @@ python -m pip wheel . --no-deps --no-build-isolation -w dist
 
 Tests cover validation, dry-run, projection orientation, calibration/hook cleanup,
 paired controls, resume identity, output protection, subprocess bounds and context
-limits. One optional test uses real torch tensors and skips if torch is absent.
-The existing local runtime environment also runs that test without a skip.
+limits. Optional tests use real torch tensors and skip if torch is absent.
+The existing local runtime environment runs those tests without skips, including
+nonzero hook math and half-precision overflow rejection.
 
 This package was extracted from the CallAI project's neuron-steering work. The
 MIT attribution is retained. `verification/` contains explicitly identified

@@ -3,12 +3,13 @@
 import os
 import pathlib
 import time
+
 from .steering import (
-    NeuronSteerError,
     ModelContextOverflow,
-    validate_prompt,
-    validate_generation_options,
+    NeuronSteerError,
     install_steering,
+    validate_generation_options,
+    validate_prompt,
 )
 
 SYSTEM_MESSAGE = (
@@ -123,9 +124,11 @@ class LocalRuntime:
                 "input plus completion exceeds the context bound"
             )
         encoded = {key: value.to(self.device) for key, value in encoded.items()}
-        if seed is not None:
-            self.torch.manual_seed(seed)
-        options = {"max_new_tokens": max_tokens, "do_sample": temperature > 0}
+        options = {
+            "max_new_tokens": max_tokens,
+            "do_sample": temperature > 0,
+            "return_dict_in_generate": False,
+        }
         if temperature > 0:
             options["temperature"] = temperature
         started = time.monotonic()
@@ -135,6 +138,8 @@ class LocalRuntime:
                 result, handles = install_steering(
                     self.model, encoded, specs, self.torch
                 )
+            if seed is not None:
+                self.torch.manual_seed(seed)
             with self.torch.inference_mode():
                 output = self.model.generate(**encoded, **options)
             ids = output[0][input_tokens:]

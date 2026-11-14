@@ -1,9 +1,11 @@
 """Paired text metrics; these are descriptive, not a behavioral benchmark."""
 
 import difflib
-import json
 import re
+
 from .steering import validate_prompt
+from .storage import read_json
+from .storage import write_json as write_json
 
 HOSTILITY_RE = re.compile(
     r"\b(?:kill(?:ed|ing|s)?|stab(?:bed|bing|s)?|murder(?:ed|ing|s)?|"
@@ -30,22 +32,20 @@ REFUSAL_RE = re.compile(
 
 
 def load_prompts(path):
-    data = json.loads(path.read_text())
-    if not isinstance(data, list) or not data:
-        raise ValueError("prompt file must contain a non-empty list")
+    data = read_json(path)
+    if not isinstance(data, list) or not 1 <= len(data) <= 10000:
+        raise ValueError("prompt file must contain 1–10000 objects")
     prompts = []
     for index, row in enumerate(data, 1):
         if not isinstance(row, dict):
             raise ValueError(f"prompt {index} must be an object")
         category, prompt = row.get("category"), row.get("prompt")
-        if not isinstance(category, str) or not category.strip():
+        if not isinstance(category, str) or not category.strip() or len(category) > 200:
             raise ValueError(f"prompt {index} has an invalid category")
         if not isinstance(prompt, str) or not prompt.strip():
             raise ValueError(f"prompt {index} has invalid text")
         validate_prompt(prompt)
-        prompts.append(
-            {"index": index, "category": category.strip(), "prompt": prompt.strip()}
-        )
+        prompts.append({"index": index, "category": category.strip(), "prompt": prompt})
     return prompts
 
 
@@ -148,15 +148,15 @@ def summarize(records):
 def markdown(payload):
     summary = payload["summary"]
     lines = [
-        "# 100-prompt neuron-steering evaluation",
+        f"# {summary['prompts']}-prompt neuron-steering evaluation",
         "",
-        f"Model: `{payload['model']}`",
+        f"Model: {markdown_literal(payload['model'])}",
         "",
-        f"Targets: `{', '.join(payload['targets'])}`",
+        f"Targets: {markdown_literal(', '.join(payload['targets']))}",
         "",
         "Baseline: no steering hooks. Steered: down_proj hooks at every token.",
         "",
-        f"Runtime: {payload['runtime']}",
+        f"Runtime: {markdown_literal(payload['runtime'])}",
         "",
         "> Generated locally. Steering can produce unsafe, incoherent or false output.",
         "> Keyword counts are a rough signal, not a safety or model-quality score.",
@@ -166,7 +166,7 @@ def markdown(payload):
         "| Metric | Before | After |",
         "| --- | ---: | ---: |",
         f"| Prompts | {summary['prompts']} | {summary['prompts']} |",
-        f"| Runs | {summary['runs']} | {summary['runs']} |",
+        f"| Runs | {summary['prompts']} | {summary['prompts']} |",
         f"| Changed responses | 0 | {summary['changed']} ({summary['changed_percent']}%) |",
         f"| Refusal responses | {summary['baseline_refusal_responses']} | {summary['steered_refusal_responses']} |",
         f"| Responses with hostility keywords | {summary['baseline_hostility_responses']} | {summary['steered_hostility_responses']} |",
@@ -182,7 +182,9 @@ def markdown(payload):
         "| ---: | --- | ---: |",
     ]
     for row in summary["top_changed"]:
-        lines.append(f"| {row['index']} | {row['prompt']} | {row['similarity']} |")
+        lines.append(
+            f"| {row['index']} | {markdown_literal(row['prompt'])} | {row['similarity']} |"
+        )
     lines.extend(
         [
             "",
@@ -194,7 +196,7 @@ def markdown(payload):
     )
     for row in summary["top_hostility_increase"]:
         lines.append(
-            f"| {row['index']} | {row['prompt']} | {row['baseline_hits']} | "
+            f"| {row['index']} | {markdown_literal(row['prompt'])} | {row['baseline_hits']} | "
             f"{row['steered_hits']} | {row['delta']} |"
         )
     lines.extend(["", "## All prompts", ""])
@@ -202,32 +204,32 @@ def markdown(payload):
         metrics = row["metrics"]
         lines.extend(
             [
-                f"### {row['index']}. {row['prompt']}",
+                f"### {row['index']}. {markdown_literal(row['prompt'])}",
                 "",
-                f"Category: `{row['category']}` · Similarity: `{metrics['similarity']}` · "
+                f"Category: {markdown_literal(row['category'])} · Similarity: `{metrics['similarity']}` · "
                 f"Refusal: `{metrics['baseline_refusal_hits']} → {metrics['steered_refusal_hits']}` · "
                 f"Hostility: `{metrics['baseline_hostility_hits']} → {metrics['steered_hostility_hits']}` · "
                 f"Chars: `{metrics['baseline_chars']} → {metrics['steered_chars']}`",
                 "",
                 "**Before (no steering):**",
                 "",
-                "~~~~text",
-                row["baseline"]["content"],
-                "~~~~",
+                code_block(row["baseline"]["content"]),
                 "",
                 "**After (steered):**",
                 "",
-                "~~~~text",
-                row["steered"]["content"],
-                "~~~~",
+                code_block(row["steered"]["content"]),
                 "",
             ]
         )
     return "\n".join(lines).rstrip() + "\n"
 
 
-def write_json(path, payload):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temp = path.with_suffix(path.suffix + ".tmp")
-    temp.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
-    temp.replace(path)
+def markdown_literal(value):
+    text = str(value).replace("\n", " ").replace("\r", " ")
+    return re.sub(r"([\\`*_{}\[\]()#+.!|<>~-])", r"\\\1", text)
+
+
+def code_block(value):
+    longest = max((len(m.group()) for m in re.finditer(r"~+", value)), default=0)
+    fence = "~" * max(4, longest + 1)
+    return fence + "text\n" + value + "\n" + fence

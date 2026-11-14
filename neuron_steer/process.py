@@ -5,6 +5,7 @@ import selectors
 import signal
 import subprocess
 import time
+
 from .steering import NeuronSteerError
 
 

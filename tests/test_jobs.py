@@ -7,31 +7,34 @@ import sys
 import tempfile
 import unittest
 from unittest import mock
-from neuron_steer.cli import main
+
 from neuron_steer import jobs
-from neuron_steer.steering import NeuronSteerError
+from neuron_steer.cli import main
 from neuron_steer.process import bounded_run
+from neuron_steer.steering import NeuronSteerError
 
 
 class JobsTests(unittest.TestCase):
     def job(self, directory):
-        return dict(
-            operation="evaluate",
-            model=directory,
-            neurons=["0:1:1"],
-            max_tokens=4,
-            temperature=0.1,
-            context_size=20,
-            seed=1,
-            device="cpu",
-            no_thinking=True,
-            timeout=5,
-            limit=0,
-            resume=False,
-            prompts=str(pathlib.Path(directory) / "prompts.json"),
-            output=str(pathlib.Path(directory) / "out.json"),
-            markdown_out=str(pathlib.Path(directory) / "out.md"),
-        )
+        model = pathlib.Path(directory) / "model"
+        model.mkdir(exist_ok=True)
+        return {
+            "operation": "evaluate",
+            "model": str(model),
+            "neurons": ["0:1:1"],
+            "max_tokens": 4,
+            "temperature": 0.1,
+            "context_size": 20,
+            "seed": 1,
+            "device": "cpu",
+            "no_thinking": True,
+            "timeout": 5,
+            "limit": 0,
+            "resume": False,
+            "prompts": str(pathlib.Path(directory) / "prompts.json"),
+            "output": str(pathlib.Path(directory) / "out.json"),
+            "markdown_out": str(pathlib.Path(directory) / "out.md"),
+        }
 
     def test_dry_run_independent_and_stdin(self):
         with (
@@ -156,8 +159,8 @@ class JobsTests(unittest.TestCase):
             runtime = mock.Mock()
             runtime.info = {}
             runtime.generate.side_effect = [
-                dict(content="a", tokens=1, elapsed_seconds=0),
-                dict(content="b", tokens=1, elapsed_seconds=0),
+                {"content": "a", "tokens": 1, "elapsed_seconds": 0},
+                {"content": "b", "tokens": 1, "elapsed_seconds": 0},
                 RuntimeError("generation failed"),
             ]
             with (
