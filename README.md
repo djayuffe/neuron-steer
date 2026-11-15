@@ -1,6 +1,8 @@
 # neuron-steer
 
-Version **0.1.1**. Supported platforms: **macOS and Linux**, Python 3.10+.
+Version **0.2.0**. Supported platforms: **macOS and Linux**, Python 3.10+.
+Read the detailed [design.md](design.md) for the math and execution flow, and
+[NEURONPEDIA.md](NEURONPEDIA.md) for the explicit research API.
 See [AUDIT.md](AUDIT.md) for findings, fixes and limits, and
 [CHANGELOG.md](CHANGELOG.md) for the v2 checkpoint upgrade.
 [ARCHITECTURE.md](ARCHITECTURE.md) describes module boundaries and maintenance.
@@ -10,14 +12,30 @@ compatible Hugging Face Transformers causal language models. This project is
 independent of CallAI: it does not import its code, require its checkout, or read
 call/message history.
 
-The package loads already-downloaded local safetensors weights with offline
+For local generation, the package loads already-downloaded local safetensors weights with offline
 Hugging Face settings and remote model code disabled. It applies temporary MLP
 output-projection hooks and removes them after generation, including error paths.
 It does not edit weight files or provide tools to the generated model.
 
+## Neuronpedia research
+
+```sh
+python -m neuron_steer neuronpedia models
+python -m neuron_steer neuronpedia feature --url https://www.neuronpedia.org/gemma-2-2b/20-gemmascope-res-16k/10956
+```
+
+Discover models/sources, look up feature explanations, search explanations, test
+activations, find top features and request service-side steering. Text is supplied
+explicitly via stdin; hosted text may be retained. `link` and `--dry-run` are
+offline. An optional local `--reference URL` stores research annotations without
+fetching them or converting SAE feature indices into local MLP targets. See
+[NEURONPEDIA.md](NEURONPEDIA.md) for self-hosting, credentials and examples.
+
 ## Run without installing
 
-From this directory, using the Python environment containing your model runtime:
+From this directory, use a Python **3.10+** environment. The examples call it
+`python`; choose an explicit supported interpreter if your shell selects an older
+Python. Live generation additionally needs the model runtime packages:
 
 ```sh
 python -m neuron_steer generate --model /path/to/local/model \
@@ -77,7 +95,7 @@ after each complete baseline/steered pair. An interrupted pair is rerun.
 
 Resume verifies a fingerprint of selected prompts, targets, generation settings,
 model directory, local safetensors/config file metadata, package/Python/runtime
-versions and the Markdown path. This catches ordinary file replacements and
+versions, research references and the Markdown path. This catches ordinary file replacements and
 version changes, not deliberate same-metadata weight changes. Partial resumes
 also check the resolved runtime metadata. It rejects changed settings and
 malformed/duplicate checkpoint records. Both report paths must be outside the model directory, differ from the prompt
@@ -87,7 +105,8 @@ files prevent concurrent writers to either report; OS locks release on process
 exit. Unique temporary files are atomically replaced per report. JSON and
 Markdown are not one combined transaction; resume can regenerate stale Markdown.
 
-0.1.1 uses checkpoint **format v2**. Start a new report when upgrading from v1;
+Current releases use checkpoint **format v2**. Package upgrades participate in
+identity checks, so start new report paths when upgrading to 0.2.0. Start a new report when upgrading from v1;
 legacy files are not rewritten or resumed. Prompt JSON is limited to 8 MiB and
 10000 entries; checkpoint JSON is limited to 128 MiB. Duplicate keys, non-finite
 numbers and nesting deeper than 32 levels are rejected.

@@ -1,0 +1,47 @@
+{
+  "version": "0.2.0",
+  "date": "2026-11-15",
+  "regression": {
+    "tests": 54,
+    "passed": true,
+    "skipped": 0
+  },
+  "checks": {
+    "ruff": "0.17.5: passed",
+    "format": "passed",
+    "compile": "passed",
+    "wheel_build": "passed",
+    "isolated_wheel_link_and_local_reference_dry_run": "passed"
+  },
+  "live_public_api": {
+    "models": {
+      "passed": true,
+      "response_bytes": 1768469,
+      "response_sha256": "4779f895e0d040f7f4519cd72e80011728ec984519989c38b2dcc3a478d11234",
+      "items_or_fields": 76
+    },
+    "source": {
+      "passed": true,
+      "response_bytes": 67424,
+      "response_sha256": "ae31f74766afc7ebdf5289ca40b79fc44135125a5229adc769bcc8fb7fe1f72a",
+      "items_or_fields": 28
+    },
+    "feature": {
+      "passed": true,
+      "response_bytes": 337159,
+      "response_sha256": "75f7e98187b1932f1a0bdf880129d55017d16c1e2b34f5bad33354b00341a0ce",
+      "items_or_fields": 46
+    }
+  },
+  "hosted_text_submitted": false,
+  "live_inference_executed": false,
+  "weights_downloaded": false,
+  "limits": [
+    "Hosted inference/search/steering payloads are contract-tested; live calls retrieved public metadata only.",
+    "No self-hosted Neuronpedia deployment was installed.",
+    "References are annotations, not a feature-to-neuron mapping.",
+    "Python 3.9 is rejected as declared; tests/build use supported interpreters."
+  ],
+  "design": "design.md",
+  "ci": "See Actions for the committed revision."
+}

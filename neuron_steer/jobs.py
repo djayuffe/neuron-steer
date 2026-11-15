@@ -12,6 +12,7 @@ import sys
 
 from . import __version__
 from .evaluation import load_prompts, markdown, metric_row, summarize
+from .neuronpedia import normalize_references
 from .runtime import LocalRuntime
 from .steering import (
     NeuronSteerError,
@@ -47,6 +48,7 @@ def validate_job(job):
         raise NeuronSteerError("invalid model path or thinking setting")
     if not isinstance(job.get("neurons"), list):
         raise NeuronSteerError("neuron targets must be a list")
+    job["references"] = normalize_references(job.get("references", []))
     specs = parse_specs(job.get("neurons"))
     validate_generation_options(
         **{k: job[k] for k in ("max_tokens", "temperature", "context_size", "seed")}
@@ -115,6 +117,7 @@ def checkpoint_identity(job, prompts):
         except importlib.metadata.PackageNotFoundError:
             versions[name] = "not-installed"
     identity.update(
+        references=normalize_references(job.get("references", [])),
         prompts=prompts,
         model_files=files,
         format_version=2,
@@ -135,7 +138,13 @@ def run_job(job):
         return evaluate(job, specs)
     runtime = LocalRuntime(model, job["device"])
     result = runtime.generate(job["prompt"], specs, **generation_options(job))
-    return {"operation": "generate", "runtime": runtime.info, **result}
+    return {
+        "operation": "generate",
+        "runtime": runtime.info,
+        "neuronpedia_references": job["references"],
+        "references_are_annotations": True,
+        **result,
+    }
 
 
 def generation_options(job):
@@ -282,6 +291,8 @@ def evaluate_locked(job, specs):
         "fingerprint": fingerprint,
         "model": job["model"],
         "targets": job["neurons"],
+        "neuronpedia_references": job["references"],
+        "references_are_annotations": True,
         "baseline": "no steering hooks",
         "runtime": runtime.info if runtime else existing["runtime"],
         "private_history_accessed": False,

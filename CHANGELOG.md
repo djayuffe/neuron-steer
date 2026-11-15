@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0 — 2026-11-15
+
+Add an independent Neuronpedia API client and CLI: discovery, dashboard lookup,
+explanation search, activation/top-feature tests, hosted additive steering and
+offline feature links. Restrict hosted traffic to official verified HTTPS origins
+or explicit loopback webapps, keep credentials in headers, enforce the command
+budget through a bounded worker, and validate response limits/identity.
+
+Local jobs may carry up to 16 research references; no reference is fetched or
+converted to a neuron coordinate. References are included in checkpoint identity
+and reports. Add detailed `design.md`, usage guide and contract/loopback tests.
+Reject incomplete API bodies and use the selected self-hosted origin in feature
+links. Package upgrades require fresh report paths; existing reports are retained.
+
 ## 0.1.1 — 2026-11-15
 
 Protect model/input files from report writes; prevent competing report writers;

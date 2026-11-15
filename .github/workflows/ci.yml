@@ -20,3 +20,5 @@ jobs:
       - run: ruff format --check neuron_steer tests
       - run: python -m pip wheel --no-deps --no-build-isolation . -w dist
       - run: neuron-steer generate --model /not-loaded --neuron 0:0:0 --prompt synthetic --dry-run
+      - run: neuron-steer neuronpedia link --url https://www.neuronpedia.org/gemma-2-2b/20-gemmascope-res-16k/10956
+      - run: neuron-steer generate --model /not-loaded --neuron 0:0:0 --prompt synthetic --reference https://www.neuronpedia.org/gemma-2-2b/20-gemmascope-res-16k/10956 --dry-run

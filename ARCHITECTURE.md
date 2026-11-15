@@ -1,4 +1,10 @@
-# Architecture and maintenance
+# Architecture overview
+
+For the detailed algorithm, coordinate systems, runtime, checkpoint and transport
+design, see [design.md](design.md). Version 0.2.0 adds an explicit Neuronpedia
+worker route and offline research annotations; local generation/evaluation remains
+separate from all network operations.
+
 
 The package supports macOS/Linux. Its import path and dry-run CLI require only
 Python 3.10+. Torch, Transformers and safetensors are loaded only when a live

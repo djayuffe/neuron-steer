@@ -1,4 +1,4 @@
-"""Standalone offline neuron steering CLI with an isolated bounded worker."""
+"""Local steering and explicit Neuronpedia research, using bounded workers."""
 
 import argparse
 import json
@@ -9,7 +9,7 @@ import subprocess
 import sys
 import time
 
-from . import __version__
+from . import __version__, neuronpedia
 from .jobs import validate_job
 from .process import bounded_run
 from .steering import MAX_PROMPT_BYTES, NeuronSteerError, formula
@@ -55,6 +55,13 @@ def parser():
             help="Total command budget including stdin and child (1–86400 seconds)",
         )
         p.add_argument("--dry-run", action="store_true")
+        p.add_argument(
+            "--reference",
+            dest="references",
+            action="append",
+            default=[],
+            help="Neuronpedia feature URL, stored as a research annotation; never fetched locally",
+        )
         if operation == "generate":
             group = p.add_mutually_exclusive_group(required=True)
             group.add_argument("--prompt")
@@ -72,6 +79,42 @@ def parser():
             p.add_argument("--markdown-out")
             p.add_argument("--limit", type=int, default=0)
             p.add_argument("--resume", action="store_true")
+    np = commands.add_parser(
+        "neuronpedia",
+        help="Explicit Neuronpedia API operations; separate from local hooks",
+    )
+    np.add_argument("action", choices=neuronpedia.OPERATIONS)
+    np.add_argument("--model")
+    np.add_argument("--source")
+    np.add_argument("--source-set")
+    np.add_argument("--index", type=int)
+    np.add_argument("--url", help="Official feature URL instead of model/source/index")
+    np.add_argument(
+        "--stdin",
+        action="store_true",
+        help="Explicit text for search, activate, top or steer",
+    )
+    np.add_argument("--endpoint", default=neuronpedia.ORIGIN)
+    np.add_argument(
+        "--api-key-env", help="Environment variable name, never a key value"
+    )
+    np.add_argument(
+        "--ca-file",
+        help="CA bundle for loopback HTTPS; certificate verification stays enabled",
+    )
+    np.add_argument(
+        "--timeout",
+        type=float,
+        default=30,
+        help="Total command budget, including stdin/network (1–300 seconds)",
+    )
+    np.add_argument("--offset", type=int, default=0)
+    np.add_argument("--limit", type=int, default=20)
+    np.add_argument("--max-tokens", type=int, default=48)
+    np.add_argument("--temperature", type=float, default=0)
+    np.add_argument("--strength", type=float, default=1)
+    np.add_argument("--seed", type=int, default=16)
+    np.add_argument("--dry-run", action="store_true")
     return root
 
 
@@ -98,39 +141,55 @@ def main(argv=None):
     args = parser().parse_args(argv)
     started = time.monotonic()
     try:
-        job = vars(args).copy()
         if not 1 <= args.timeout <= 86400:
             raise NeuronSteerError("--timeout must be 1–86400 seconds")
         deadline = started + args.timeout
-        job["model"] = str(pathlib.Path(args.model).expanduser().resolve())
-        if args.operation == "generate" and args.stdin:
-            job["prompt"] = read_prompt(deadline)
-        if args.operation == "evaluate":
-            job["prompts"] = str(pathlib.Path(args.prompts).expanduser().resolve())
-            job["output"] = str(pathlib.Path(args.output).expanduser().absolute())
-            job["markdown_out"] = (
-                str(pathlib.Path(args.markdown_out).expanduser().absolute())
-                if args.markdown_out
-                else str(pathlib.Path(job["output"]).with_suffix(".md"))
-            )
-        specs = validate_job(job)
-        if args.dry_run:
-            print(
-                json.dumps(
-                    {
-                        "version": __version__,
-                        "dry_run": True,
-                        "job": job,
-                        "targets": specs,
-                        "formula": formula(),
-                        "private_history_accessed": False,
-                        "model_loaded": False,
-                    },
-                    indent=2,
-                    allow_nan=False,
+        if args.operation == "neuronpedia":
+            neuronpedia.build_request(args)
+            text = read_prompt(deadline) if args.stdin else None
+            if args.dry_run or args.action == "link":
+                reply = neuronpedia.run(args, deadline, lambda budget: text)
+                print(
+                    json.dumps(
+                        {"version": __version__, **reply}, indent=2, allow_nan=False
+                    )
                 )
-            )
-            return 0
+                return 0
+            job = {**vars(args), "text": text}
+        else:
+            job = vars(args).copy()
+            if not 1 <= args.timeout <= 86400:
+                raise NeuronSteerError("--timeout must be 1–86400 seconds")
+            deadline = started + args.timeout
+            job["model"] = str(pathlib.Path(args.model).expanduser().resolve())
+            if args.operation == "generate" and args.stdin:
+                job["prompt"] = read_prompt(deadline)
+            if args.operation == "evaluate":
+                job["prompts"] = str(pathlib.Path(args.prompts).expanduser().resolve())
+                job["output"] = str(pathlib.Path(args.output).expanduser().absolute())
+                job["markdown_out"] = (
+                    str(pathlib.Path(args.markdown_out).expanduser().absolute())
+                    if args.markdown_out
+                    else str(pathlib.Path(job["output"]).with_suffix(".md"))
+                )
+            specs = validate_job(job)
+            if args.dry_run:
+                print(
+                    json.dumps(
+                        {
+                            "version": __version__,
+                            "dry_run": True,
+                            "job": job,
+                            "targets": specs,
+                            "formula": formula(),
+                            "private_history_accessed": False,
+                            "model_loaded": False,
+                        },
+                        indent=2,
+                        allow_nan=False,
+                    )
+                )
+                return 0
         result = bounded_run(
             [sys.executable, "-m", "neuron_steer._worker"],
             input=json.dumps(job, allow_nan=False),

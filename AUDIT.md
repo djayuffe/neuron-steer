@@ -1,3 +1,19 @@
+# Integration audit — 0.2.0 (2026-11-15)
+
+Added explicit remote research without changing the offline generation path.
+Verified URL/host restrictions, credential headers, stdin opt-in, hard process
+timeout, payload contracts, response bounds/strict JSON and exact feature identity.
+Fixed two integration edge cases during testing: truncated bodies declaring a
+larger Content-Length are rejected, and self-hosted dashboard links use the
+selected endpoint rather than implying a public resource exists.
+
+Research references are canonical URLs only; they cannot invoke a client, install
+hooks, map SAE coordinates into MLP indices or load weights. They participate in
+resume identity. Detailed design and limits are in [design.md](design.md), and
+verification is recorded in `verification/neuronpedia-v0.2.0.json`.
+
+---
+
 # Audit — 0.1.1 (2026-11-15)
 
 Scope: standalone `neuron-steer`, its worker, runtime hooks, report/checkpoint

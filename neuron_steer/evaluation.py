@@ -221,6 +221,17 @@ def markdown(payload):
                 "",
             ]
         )
+    if payload.get("neuronpedia_references"):
+        lines.extend(
+            [
+                "",
+                "## Neuronpedia research references",
+                "",
+                "Annotations only: these URLs were not fetched or converted to local neuron targets.",
+                "",
+            ]
+        )
+        lines.extend("- " + url for url in payload["neuronpedia_references"])
     return "\n".join(lines).rstrip() + "\n"
 
 
