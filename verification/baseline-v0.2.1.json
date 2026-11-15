@@ -1,0 +1,21 @@
+{
+  "version": "0.2.1",
+  "private_history_accessed": false,
+  "operation": "generate",
+  "mode": "baseline",
+  "runtime": {
+    "python_model_path": "/Users/ulfbertilsson/Downloads/models/Qwen3.5-4B",
+    "device": "mps",
+    "torch": "2.15.0",
+    "transformers": "5.23.0",
+    "offline_loading": true
+  },
+  "neuronpedia_references": [],
+  "references_are_annotations": true,
+  "content": "Hello!",
+  "tokens": 5,
+  "input_tokens": 39,
+  "reached_token_budget": false,
+  "elapsed_seconds": 3.44,
+  "steering": null
+}

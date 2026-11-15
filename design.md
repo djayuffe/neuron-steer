@@ -1,6 +1,6 @@
 # Design: local neuron steering and Neuronpedia research
 
-Version 0.2.0 · 2026-11-15
+Version 0.2.1 · 2026-11-15
 
 This document explains what the program actually computes, which component owns
 each step, how results can be reproduced, and where the guarantees end. The CLI
@@ -59,8 +59,9 @@ flowchart TD
 | `storage.py` | Strict JSON, bounded file reads, unique temporary files, flush/fsync and atomic replacement. |
 | `neuronpedia.py` | URL/endpoint validation, API payloads, bounded transport, research metadata and offline link/reference helpers. |
 
-A local generation job contains a model-directory path, explicit text, a list of
-`LAYER:NEURON:DOSE` strings, generation settings and optional reference URLs. A
+A local generation job contains a model-directory path, explicit text, either
+`--baseline` or `LAYER:NEURON:DOSE` targets, generation settings and optional
+reference URLs. Invalid options fail before the CLI waits for stdin. A
 local evaluation job replaces the single prompt with an explicit prompt-file path
 and output paths. A Neuronpedia job contains resource identifiers and explicit
 text only when the selected API operation needs it. It never goes through
@@ -107,7 +108,12 @@ Dimension/orientation checks happen against the loaded module. Supported weights
 must be two dimensional; recognized quantized/integer representations are rejected.
 Unrecognized custom packing is not supported merely because a tensor has two axes.
 
-The input parser accepts up to eight unique targets, block indices 0–255, neuron
+Explicit `generate --baseline` bypasses projection lookup, calibration and hook
+installation. It works with causal models supported by the loader even when their
+projection layout is not recognized. Its result reports `mode: baseline`; a job
+with targets reports `mode: steered`, including zero-dose targets.
+
+The target parser accepts up to eight unique targets, block indices 0–255, neuron
 indices 0–1000000, and finite doses in ±10. These are outer validation bounds.
 The loaded model imposes the actual, usually smaller, layer/neuron dimensions.
 A target for one architecture is not a portable behavioral label for another.
@@ -213,16 +219,21 @@ order, including a Markdown file shared by otherwise different JSON outputs.
 
 Checkpoint format v2 stores a fingerprint of selected prompts, targets,
 generation settings, references, model path/file metadata, package/Python/runtime
-versions and Markdown path. Weight identity uses names, sizes and modification
-times, not a full tensor hash. Checkpoints are not signed provenance. A partial
+versions and Markdown path. Weight identity tracks relative names, sizes and modification times recursively
+for safetensors shards, known configuration/tokenizer/vocabulary assets and
+tiktoken files, including nested weight files. Hidden directories and symlinked
+directory traversal are not included. This is metadata identity, not a full tensor
+hash. Checkpoints are not signed provenance. A partial
 resume also compares resolved runtime metadata before generating further pairs.
 
-Records are validated for unique integer indices, exact prompt/category,
+Records require an integer format version and are validated for unique integer
+indices, exact prompt/category,
 string content, bounded token counts, finite non-negative elapsed time and metrics
-consistent with the texts. A bad checkpoint fails before loading weights.
+consistent with the texts. Optional input-token counts and budget flags are typed
+when present. A missing `--resume` checkpoint fails instead of starting a new evaluation.
+A bad checkpoint fails before loading weights.
 Changing a recorded reference is also an identity change, even though references
-never affect generation. Version 0.2.0 requires new report paths for results made
-with earlier package versions; old files remain preserved.
+never affect generation. Package-version changes require new report paths for earlier results; old files remain preserved.
 
 After each complete pair, a unique temporary JSON file is flushed/fsynced and
 atomically replaces the checkpoint. The JSON limit is 128 MiB. Markdown is
@@ -305,7 +316,22 @@ SAE decoder weights, feature coordinate, hook location, normalization convention
 and a tested adapter. That capability is not supplied by a dashboard URL alone
 and is outside this release.
 
-## 11. Verification and sources
+## 11. Preflight and JSON validation
+
+Local scalar/target/reference options are checked before reading stdin. A local
+evaluation dry-run reads and validates its named or bundled prompt data, selected
+limit and protected output paths without creating locks/reports or loading weights.
+It reports whether the model directory exists and explicitly leaves model dimension
+validation false. It does not guarantee that weights fit memory or that a resume
+checkpoint is fully compatible; those checks belong to execution.
+
+Strict JSON rejects duplicate keys, explicit NaN/Infinity, numbers that overflow
+to infinity (for example `1e999`), invalid/unpaired Unicode surrogates and excessive
+nesting. Bounds apply before file parsing and HTTP response decoding. This keeps
+decoding, fingerprints and serialization consistent instead of failing late when
+writing results.
+
+## 12. Verification and sources
 
 Tests exercise pure payload building, URL/host restrictions, explicit text rules,
 credentials, response bounds, malformed JSON, resource identity, real loopback

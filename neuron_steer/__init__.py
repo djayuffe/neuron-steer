@@ -4,6 +4,6 @@ The package is intentionally importable without torch or transformers. The
 heavy runtime dependencies are imported only when a model is loaded.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 __all__ = ["__version__"]

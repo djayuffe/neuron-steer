@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1 — 2026-11-15
+
+Add explicit unhooked `generate --baseline` and distinguish it from zero-dose
+hooks. Validate local options before stdin; evaluation dry-runs preflight prompt
+sets, limits and output paths. Reject missing resume checkpoints and non-file
+report targets; normalize programmatic job paths and handle symlink loops cleanly. Track nested safetensors and tokenizer/vocabulary assets in model
+identity. Reject JSON exponent overflow and invalid Unicode; validate optional
+checkpoint counts/flags and integer format versions. Consolidate current docs,
+retain historical audits under `docs/history`, and refresh examples/verification.
+Package-version identity changes require fresh report paths after upgrading.
+
 ## 0.2.0 — 2026-11-15
 
 Add an independent Neuronpedia API client and CLI: discovery, dashboard lookup,

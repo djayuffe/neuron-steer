@@ -23,7 +23,7 @@ from .steering import (
 from .storage import atomic_text, read_json, write_json
 
 
-def validate_job(job):
+def validate_job(job, *, require_prompt=True):
     if not isinstance(job, dict):
         raise NeuronSteerError("job must be an object")
     if job.get("operation") not in ("generate", "evaluate"):
@@ -49,19 +49,22 @@ def validate_job(job):
     if not isinstance(job.get("neurons"), list):
         raise NeuronSteerError("neuron targets must be a list")
     job["references"] = normalize_references(job.get("references", []))
-    specs = parse_specs(job.get("neurons"))
+    baseline = job.get("baseline", False)
+    if type(baseline) is not bool or baseline and job["operation"] != "generate":
+        raise NeuronSteerError("baseline is a boolean option for generate only")
+    if baseline and job["neurons"]:
+        raise NeuronSteerError("baseline cannot be combined with neuron targets")
+    specs = [] if baseline else parse_specs(job.get("neurons"))
     validate_generation_options(
         **{k: job[k] for k in ("max_tokens", "temperature", "context_size", "seed")}
     )
-    if (
-        not isinstance(job.get("timeout"), (int, float))
-        or not 1 <= job["timeout"] <= 86400
-    ):
+    if type(job.get("timeout")) not in (int, float) or not 1 <= job["timeout"] <= 86400:
         raise NeuronSteerError("--timeout must be 1–86400 seconds")
     if job.get("device") not in ("auto", "cpu", "mps", "cuda"):
         raise NeuronSteerError("unsupported device")
     if job["operation"] == "generate":
-        validate_prompt(job.get("prompt"))
+        if require_prompt:
+            validate_prompt(job.get("prompt"))
     else:
         if type(job.get("limit")) is not int or not 0 <= job["limit"] <= 10000:
             raise NeuronSteerError("--limit must be 0–10000")
@@ -82,21 +85,31 @@ def checkpoint_identity(job, prompts):
     model = pathlib.Path(job["model"]).expanduser().resolve()
     # Detect replaced local weights/configs without reading gigabytes of tensor data.
     files = []
-    for file in sorted(model.glob("*")):
+    asset_names = {
+        "config.json",
+        "generation_config.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "special_tokens_map.json",
+        "added_tokens.json",
+        "vocab.json",
+        "vocab.txt",
+        "merges.txt",
+        "tokenizer.model",
+        "spiece.model",
+        "sentencepiece.bpe.model",
+    }
+    for file in sorted(model.rglob("*")):
+        relative = file.relative_to(model)
+        if any(part.startswith(".") for part in relative.parts):
+            continue
         if file.is_file() and (
-            file.suffix == ".safetensors"
-            or file.name
-            in (
-                "config.json",
-                "generation_config.json",
-                "tokenizer.json",
-                "tokenizer_config.json",
-                "special_tokens_map.json",
-            )
+            file.suffix in (".safetensors", ".tiktoken")
+            or file.name in asset_names
             or file.name.endswith(".safetensors.index.json")
         ):
             stat = file.stat()
-            files.append((file.name, stat.st_size, stat.st_mtime_ns))
+            files.append((relative.as_posix(), stat.st_size, stat.st_mtime_ns))
     identity = {
         k: job[k]
         for k in (
@@ -134,12 +147,17 @@ def run_job(job):
     model = pathlib.Path(job["model"]).expanduser().resolve()
     if not model.is_dir():
         raise NeuronSteerError("model must point to an existing local directory")
+    job["model"] = str(model)
     if job["operation"] == "evaluate":
+        job["prompts"] = str(pathlib.Path(job["prompts"]).expanduser().resolve())
+        for key in ("output", "markdown_out"):
+            job[key] = str(pathlib.Path(job[key]).expanduser().absolute())
         return evaluate(job, specs)
     runtime = LocalRuntime(model, job["device"])
     result = runtime.generate(job["prompt"], specs, **generation_options(job))
     return {
         "operation": "generate",
+        "mode": "baseline" if job.get("baseline", False) else "steered",
         "runtime": runtime.info,
         "neuronpedia_references": job["references"],
         "references_are_annotations": True,
@@ -162,7 +180,13 @@ def validate_output_paths(job):
         output.exists() and md_out.exists() and output.samefile(md_out)
     ):
         raise NeuronSteerError("JSON and Markdown outputs must be different paths")
+    if job["resume"] and not output.is_file():
+        raise NeuronSteerError("resume requires an existing JSON checkpoint file")
     for target in (output, md_out):
+        if target.exists() and not target.is_file():
+            raise NeuronSteerError(
+                "report paths must name files, not directories or devices"
+            )
         if target.is_symlink():
             raise NeuronSteerError("report paths must not be symlinks")
         if target.resolve() == prompt or (
@@ -238,6 +262,15 @@ def validate_records(records, prompts, maximum):
                 or not 0 <= result["tokens"] <= maximum
             ):
                 raise NeuronSteerError("invalid checkpoint token count")
+            if "input_tokens" in result and (
+                type(result["input_tokens"]) is not int or result["input_tokens"] < 0
+            ):
+                raise NeuronSteerError("invalid checkpoint input token count")
+            if (
+                "reached_token_budget" in result
+                and type(result["reached_token_budget"]) is not bool
+            ):
+                raise NeuronSteerError("invalid checkpoint token budget flag")
             elapsed = result.get("elapsed_seconds")
             if (
                 type(elapsed) not in (int, float)
@@ -252,12 +285,18 @@ def validate_records(records, prompts, maximum):
         seen.add(index)
 
 
-def evaluate_locked(job, specs):
+def evaluation_preflight(job):
     prompts = load_prompts(pathlib.Path(job["prompts"]))
     if job["limit"]:
         if job["limit"] > len(prompts):
             raise NeuronSteerError("--limit exceeds the prompt count")
         prompts = prompts[: job["limit"]]
+    validate_output_paths(job)
+    return prompts
+
+
+def evaluate_locked(job, specs):
+    prompts = evaluation_preflight(job)
     output = pathlib.Path(job["output"])
     md_out = pathlib.Path(job["markdown_out"])
     fingerprint = checkpoint_identity(job, prompts)
@@ -268,7 +307,11 @@ def evaluate_locked(job, specs):
                 "output already exists; use --resume or choose a new output"
             )
         existing = read_json(output, 128 * 1024 * 1024)
-        if not isinstance(existing, dict) or existing.get("version") != 2:
+        if (
+            not isinstance(existing, dict)
+            or type(existing.get("version")) is not int
+            or existing.get("version") != 2
+        ):
             raise NeuronSteerError(
                 "unsupported checkpoint format; start a new v2 report"
             )

@@ -1,0 +1,38 @@
+{
+  "version": "0.2.1",
+  "date": "2026-11-15",
+  "regression": {
+    "tests": 66,
+    "passed": true,
+    "skipped": 0
+  },
+  "checks": {
+    "ruff": "0.17.5: passed",
+    "format": "passed",
+    "wheel_build": "passed",
+    "installed_baseline_dry_run": "passed",
+    "installed_evaluation_preflight": "passed",
+    "installed_neuronpedia_link": "passed"
+  },
+  "live_baseline": {
+    "model": "installed Qwen3.5-4B",
+    "device": "mps",
+    "mode": "baseline",
+    "hooks_installed": false,
+    "content": "Hello!",
+    "weights_downloaded": false,
+    "private_history_accessed": false
+  },
+  "fixes": [
+    "validate options before stdin",
+    "require an existing resume checkpoint",
+    "fingerprint nested weights and tokenizer assets",
+    "reject exponent overflow and invalid Unicode",
+    "type optional checkpoint metadata and version",
+    "explicit unhooked baseline generation",
+    "dry-run evaluation preflight",
+    "clean directory/symlink and programmatic path handling"
+  ],
+  "documentation": "Short workflow README and maintainer overview; detailed design and API guide; historical audits archived with provenance.",
+  "ci": "Verify the Actions run for the committed revision."
+}

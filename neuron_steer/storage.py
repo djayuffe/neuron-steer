@@ -1,6 +1,7 @@
 """Strict bounded JSON and atomic report writes."""
 
 import json
+import math
 import os
 import pathlib
 import tempfile
@@ -9,7 +10,13 @@ from .steering import NeuronSteerError
 
 
 def strict_json(source, max_bytes=8 * 1024 * 1024):
-    if len(source.encode("utf-8")) > max_bytes:
+    if not isinstance(source, str):
+        raise NeuronSteerError("JSON source must be text")
+    try:
+        size = len(source.encode("utf-8"))
+    except UnicodeEncodeError as exc:
+        raise NeuronSteerError("JSON source contains invalid Unicode") from exc
+    if size > max_bytes:
         raise NeuronSteerError("JSON exceeds its byte limit")
 
     def pairs(items):
@@ -30,8 +37,16 @@ def strict_json(source, max_bytes=8 * 1024 * 1024):
             item, depth = pending.pop()
             if depth > 32:
                 raise NeuronSteerError("JSON exceeds the nesting limit")
+            if isinstance(item, float) and not math.isfinite(item):
+                raise NeuronSteerError("JSON contains a non-finite number")
+            if isinstance(item, str):
+                try:
+                    item.encode("utf-8")
+                except UnicodeEncodeError as exc:
+                    raise NeuronSteerError("JSON contains invalid Unicode") from exc
             if isinstance(item, dict):
                 pending.extend((v, depth + 1) for v in item.values())
+                pending.extend((key, depth + 1) for key in item)
             elif isinstance(item, list):
                 pending.extend((v, depth + 1) for v in item)
         return result

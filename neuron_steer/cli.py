@@ -10,7 +10,7 @@ import sys
 import time
 
 from . import __version__, neuronpedia
-from .jobs import validate_job
+from .jobs import evaluation_preflight, validate_job
 from .process import bounded_run
 from .steering import MAX_PROMPT_BYTES, NeuronSteerError, formula
 from .storage import strict_json
@@ -28,13 +28,28 @@ def parser():
         p.add_argument(
             "--model", required=True, help="Existing local Transformers model directory"
         )
-        p.add_argument(
-            "--neuron",
-            action="append",
-            required=True,
-            dest="neurons",
-            metavar="LAYER:NEURON:DOSE",
-        )
+        if operation == "generate":
+            target = p.add_mutually_exclusive_group(required=True)
+            target.add_argument(
+                "--baseline",
+                action="store_true",
+                help="Generate without calibration or steering hooks",
+            )
+            target.add_argument(
+                "--neuron",
+                action="append",
+                dest="neurons",
+                default=[],
+                metavar="LAYER:NEURON:DOSE",
+            )
+        else:
+            p.add_argument(
+                "--neuron",
+                action="append",
+                required=True,
+                dest="neurons",
+                metavar="LAYER:NEURON:DOSE",
+            )
         p.add_argument(
             "--device", choices=("auto", "cpu", "mps", "cuda"), default="auto"
         )
@@ -158,12 +173,8 @@ def main(argv=None):
             job = {**vars(args), "text": text}
         else:
             job = vars(args).copy()
-            if not 1 <= args.timeout <= 86400:
-                raise NeuronSteerError("--timeout must be 1–86400 seconds")
-            deadline = started + args.timeout
-            job["model"] = str(pathlib.Path(args.model).expanduser().resolve())
-            if args.operation == "generate" and args.stdin:
-                job["prompt"] = read_prompt(deadline)
+            model_path = pathlib.Path(args.model).expanduser()
+            job["model"] = str(model_path.resolve(strict=model_path.is_symlink()))
             if args.operation == "evaluate":
                 job["prompts"] = str(pathlib.Path(args.prompts).expanduser().resolve())
                 job["output"] = str(pathlib.Path(args.output).expanduser().absolute())
@@ -172,7 +183,16 @@ def main(argv=None):
                     if args.markdown_out
                     else str(pathlib.Path(job["output"]).with_suffix(".md"))
                 )
+            validate_job(job, require_prompt=False)
+            if args.operation == "generate" and args.stdin:
+                job["prompt"] = read_prompt(deadline)
             specs = validate_job(job)
+            preflight = {
+                "model_directory_exists": pathlib.Path(job["model"]).is_dir(),
+                "model_dimensions_validated": False,
+            }
+            if args.operation == "evaluate" and args.dry_run:
+                preflight["prompts_selected"] = len(evaluation_preflight(job))
             if args.dry_run:
                 print(
                     json.dumps(
@@ -181,6 +201,7 @@ def main(argv=None):
                             "dry_run": True,
                             "job": job,
                             "targets": specs,
+                            "preflight": preflight,
                             "formula": formula(),
                             "private_history_accessed": False,
                             "model_loaded": False,
@@ -231,6 +252,7 @@ def main(argv=None):
         OSError,
         ValueError,
         TypeError,
+        RuntimeError,
         subprocess.SubprocessError,
     ) as exc:
         print("neuron-steer: " + str(exc)[:1000], file=sys.stderr)
