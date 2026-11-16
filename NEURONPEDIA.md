@@ -4,11 +4,39 @@ Neuronpedia commands perform explicit hosted research or use a selected loopback
 Neuronpedia webapp. They are separate from local Transformers hooks. No SDK,
 torch installation or local weights are needed for these commands.
 
+> **ELI5:** Neuronpedia is a library of feature research. Saving a reference
+> adds a note to your local experiment. An explicit API command asks a service
+> for information or analysis.
+
+## Choose what you need
+
+| Your goal | Use |
+| --- | --- |
+| Make a dashboard URL without networking | `neuronpedia link` |
+| Keep research notes with a local run | `--reference FEATURE_URL` |
+| Look up research data | `models`, `model`, `source`, `feature` |
+| Analyze supplied text on a service | `search`, `activate`, `top`, `steer` with explicit `--stdin` |
+
+<details>
+<summary>See the local-reference and API-request paths</summary>
+
 ```mermaid
+---
+config:
+  fontFamily: Arial, Helvetica, sans-serif
+  fontSize: 18
+  themeVariables:
+    fontFamily: Arial, Helvetica, sans-serif
+    fontSize: 18px
+  flowchart:
+    nodeSpacing: 28
+    rankSpacing: 42
+    padding: 14
+---
 flowchart TB
   accTitle: Local annotations and explicit API research have different data paths
   accDescr: Local references are saved without HTTP. Explicit Neuronpedia operations may contact the service and text operations submit only explicit stdin. SAE feature coordinates are not local native-neuron coordinates.
-U["Neuronpedia feature URL"]:::input --> Q{"Chosen use"}:::choice
+  U["Neuronpedia feature URL"]:::input --> Q{"Chosen use"}:::choice
   Q -- "--reference on a local job" --> A["Validate and store annotation<br/>No HTTP request"]:::local
   A --> J["Local generate / evaluate / probe<br/>Native coordinates chosen explicitly"]:::evidence
   Q -- "neuronpedia link" --> L["Return dashboard URL<br/>No HTTP request"]:::local
@@ -30,6 +58,9 @@ U["Neuronpedia feature URL"]:::input --> Q{"Chosen use"}:::choice
 Solid API paths below require an explicit command; the dotted relationship is
 human research context, not a coordinate conversion. See the
 [visual explanation of SAE versus native coordinates](VISUAL_GUIDE.md#13-neuronpedia-and-coordinate-systems).
+
+
+</details>
 
 ## Public discovery and dashboards
 
@@ -85,7 +116,50 @@ No call/message history is fetched by this independent package.
 
 ## Credentials, self-hosting and time limits
 
+
+```sh
+python -m neuron_steer neuronpedia models --api-key-env NEURONPEDIA_API_KEY
+python -m neuron_steer neuronpedia models --endpoint http://127.0.0.1:3000
+```
+
+> **ELI5:** Keep the key in an environment variable, like a labeled box.
+> The request reads it when needed; you do not paste it into a command or URL.
+
+Set the credential in the named environment variable; only `x-api-key` carries
+its value. It is never an argument value or URL field. The default endpoint is
+`https://www.neuronpedia.org`; the official non-www HTTPS origin is also allowed,
+but redirects are refused. Other remote/LAN hosts, URL credentials, query strings,
+fragments and proxies are rejected. HTTPS verification stays enabled; `--ca-file`
+selects a private CA bundle when needed.
+
+A local endpoint targets Neuronpedia's **webapp API**, not its separate inference
+server. The webapp must already contain the relevant resources and have its
+inference hosts configured. This package installs/starts no Neuronpedia services
+and downloads no model/SAE weights. A local gateway can still forward externally.
+See the [upstream setup guide](https://github.com/hijohnnylin/neuronpedia#setting-up-your-local-environment).
+
+`--timeout` is a total CLI budget of 1–300 seconds (default 30), including stdin
+and the bounded worker. Text is limited to 10000 characters/40000 UTF-8 bytes,
+request bodies to 128 KiB and responses to 8 MiB. Compressed responses, malformed
+or incomplete bodies, duplicate JSON keys and non-finite JSON are rejected.
+There are no automatic retries; failures never switch to a local model/provider.
+
+<details>
+<summary>See endpoint, credential and response checks</summary>
+
 ```mermaid
+---
+config:
+  fontFamily: Arial, Helvetica, sans-serif
+  fontSize: 18
+  themeVariables:
+    fontFamily: Arial, Helvetica, sans-serif
+    fontSize: 18px
+  flowchart:
+    nodeSpacing: 28
+    rankSpacing: 42
+    padding: 14
+---
 flowchart TB
   accTitle: Explicit API requests validate endpoint, text, credentials and response
   accDescr: A requested Neuronpedia operation validates an official HTTPS or loopback endpoint, reads an optional named key from the environment, and validates bounded responses without redirects, proxies or automatic retries.
@@ -107,30 +181,7 @@ flowchart TB
   classDef limit fill:#FEE2E2,stroke:#DC2626,color:#7F1D1D,stroke-width:2px;
 ```
 
-
-```sh
-python -m neuron_steer neuronpedia models --api-key-env NEURONPEDIA_API_KEY
-python -m neuron_steer neuronpedia models --endpoint http://127.0.0.1:3000
-```
-
-Set the credential in the named environment variable; only `x-api-key` carries
-its value. It is never an argument value or URL field. The default endpoint is
-`https://www.neuronpedia.org`; the official non-www HTTPS origin is also allowed,
-but redirects are refused. Other remote/LAN hosts, URL credentials, query strings,
-fragments and proxies are rejected. HTTPS verification stays enabled; `--ca-file`
-selects a private CA bundle when needed.
-
-A local endpoint targets Neuronpedia's **webapp API**, not its separate inference
-server. The webapp must already contain the relevant resources and have its
-inference hosts configured. This package installs/starts no Neuronpedia services
-and downloads no model/SAE weights. A local gateway can still forward externally.
-See the [upstream setup guide](https://github.com/hijohnnylin/neuronpedia#setting-up-your-local-environment).
-
-`--timeout` is a total CLI budget of 1–300 seconds (default 30), including stdin
-and the bounded worker. Text is limited to 10000 characters/40000 UTF-8 bytes,
-request bodies to 128 KiB and responses to 8 MiB. Compressed responses, malformed
-or incomplete bodies, duplicate JSON keys and non-finite JSON are rejected.
-There are no automatic retries; failures never switch to a local model/provider.
+</details>
 
 ## Record research without networking during local runs
 

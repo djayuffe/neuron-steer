@@ -25,3 +25,8 @@ Candidate ranks are observations and do not establish behavioral improvement.
 diagrams), 54 checked local links/anchors, accessible SVG titles/descriptions
 and light/dark layout review. These are documentation checks; runtime source
 was unchanged. See [the visual guide](../VISUAL_GUIDE.md).
+
+`readability-2026-11-16.json` records the beginner-first structure, 32 visible
+ELI5 callouts, 18px diagram-label checks, all 26 rendered diagrams, 73 checked
+links/anchors, preserved heading links, and desktop/phone previews with technical
+sections both collapsed and expanded. Markdown body fonts remain viewer-controlled.

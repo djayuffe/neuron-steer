@@ -2,87 +2,22 @@
 
 **0.4.0 · Python 3.10+ · macOS/Linux · MIT**
 
-Explore how temporary changes to a language model's internal computation affect
-its responses. Generate an unhooked baseline, apply explicit MLP projection
-interventions, compare paired outputs, and research features through Neuronpedia.
-Inspect supported projections, discover observational candidates from your own
-prompt categories, and test them with explicit controls. The model's weight files
-stay unchanged.
+Explore what changes when you temporarily nudge a language model’s internal
+signals. Use installed local weights to inspect the model, find candidates,
+generate answers and run controlled comparisons. Add research context through
+Neuronpedia. **The model’s saved weight files stay unchanged.**
 
-[Visual guide](VISUAL_GUIDE.md) · [ELI5](#eli5) · [Install](#install) · [How it works](#how-it-works) ·
-[Examples](#examples) · [Neuronpedia](#neuronpedia) · [Limits](#limits)
+[Install](#install) · [ELI5](#eli5) · [Visual guide](VISUAL_GUIDE.md) ·
+[Examples](#examples) · [Technical design](design.md)
 
-## ELI5
+## Start here
 
-Imagine a robot storyteller with a huge mixing desk inside it. Its ordinary
-settings help it choose the next word. We can temporarily add a little extra
-signal at one exact place on that desk and listen to how the story changes.
-
-Here is the experiment:
-
-1. Ask the storyteller a question with no extra signal. Save that answer.
-2. Ask the same question while adding the chosen signal. Save that answer too.
-3. Compare the answers and record exactly which setting you used.
-4. Remove the extra signal when the experiment finishes.
-
-```mermaid
-flowchart TB
-  accTitle: The same question with and without an intervention
-  accDescr: One prompt has an unhooked baseline and a steered response. Compare the outputs and remove temporary hooks.
-Q["One explicit question"]:::input --> B["Baseline<br/>No steering hooks"]:::local
-  Q --> S["Steered<br/>Temporary extra signal"]:::choice
-  B --> C["Compare complete outputs"]:::evidence
-  S --> C
-  S --> R["Remove temporary hooks"]:::local
-  C --> J["Record what changed<br/>and what remains uncertain"]:::evidence
-  classDef input fill:#DBEAFE,stroke:#2563EB,color:#172554,stroke-width:2px;
-  classDef local fill:#CCFBF1,stroke:#0F766E,color:#134E4A,stroke-width:2px;
-  classDef choice fill:#FEF3C7,stroke:#B45309,color:#78350F,stroke-width:2px;
-  classDef evidence fill:#EDE9FE,stroke:#7C3AED,color:#3B0764,stroke-width:2px;
-  classDef remote fill:#FCE7F3,stroke:#BE185D,color:#831843,stroke-width:2px;
-  classDef limit fill:#FEE2E2,stroke:#DC2626,color:#7F1D1D,stroke-width:2px;
-```
-
-The signal's **direction** comes from one of the model's existing projection
-vectors. The **dose** controls how much signal is added. Coordinates are numeric
-positions; understanding their effect requires experiments. A change might alter
-word choice, style, coherence or factual reliability, and it might have little
-visible effect on a particular question.
-
-The intervention lasts for the current generation. It does not rewrite the
-model's saved weights or train a new model. Neuronpedia helps you explore research
-about model features; its feature coordinates need their own model/SAE context.
-
-## Visual feature map
-
-Start with the question you want to answer. The full [visual guide](VISUAL_GUIDE.md)
-walks through every command, concept and evidence boundary. Blue marks inputs,
-teal local computation, amber choices, purple evidence, pink service-side research,
-and red limits. Labels carry the same meaning without relying on color.
-
-```mermaid
-flowchart LR
-  accTitle: Choose the command for your question
-  accDescr: Inspect checks capabilities, probe ranks observational candidates, generate produces text, evaluate compares trials, and neuronpedia performs explicit research.
-Q{"What do you want to learn?"}:::input
-  Q --> I["inspect<br/>What does this checkpoint claim?"]:::local
-  I --> IL["Add --load<br/>Verify projection structure"]:::choice
-  Q --> P["probe<br/>Which native coordinates respond?"]:::local
-  P --> H["Candidate hypotheses<br/>Choose targets explicitly"]:::evidence
-  Q --> G["generate<br/>One baseline or intervention"]:::local
-  Q --> E["evaluate<br/>Paired trials and controls"]:::evidence
-  Q --> N["neuronpedia<br/>Metadata, features and text analysis"]:::remote
-  classDef input fill:#DBEAFE,stroke:#2563EB,color:#172554,stroke-width:2px;
-  classDef local fill:#CCFBF1,stroke:#0F766E,color:#134E4A,stroke-width:2px;
-  classDef choice fill:#FEF3C7,stroke:#B45309,color:#78350F,stroke-width:2px;
-  classDef evidence fill:#EDE9FE,stroke:#7C3AED,color:#3B0764,stroke-width:2px;
-  classDef remote fill:#FCE7F3,stroke:#BE185D,color:#831843,stroke-width:2px;
-  classDef limit fill:#FEE2E2,stroke:#DC2626,color:#7F1D1D,stroke-width:2px;
-```
-
-A practical path is **inspect → probe → choose explicit targets → evaluate**.
-Probing proposes hypotheses; paired experiments and controls test their effects.
-Neuronpedia adds research context with its own model/feature coordinate system.
+| Your goal | Read this |
+| --- | --- |
+| Install and try the CLI | [Installation](#install), then [a no-weights preview](#a-preview-an-unhooked-baseline-without-weights) |
+| Understand the idea | [ELI5 below](#eli5) or the [beginner visual path](VISUAL_GUIDE.md#choose-your-reading-path) |
+| Discover and test candidates | [Inspection and probing](#i-inspect-installed-weights-and-discover-candidates) |
+| Understand the implementation | [Detailed design](design.md) |
 
 ## Install
 
@@ -111,7 +46,118 @@ settings and remote model code disabled. It never downloads model or SAE weights
 Use runtime versions appropriate for your exact model. Ollama/GGUF/MLX checkpoints
 are not directly loaded by this implementation.
 
+## ELI5
+
+Imagine a robot storyteller with a huge mixing desk inside it. Its ordinary
+settings help it choose the next word. We can temporarily add a little extra
+signal at one exact place on that desk and listen to how the story changes.
+
+Here is the experiment:
+
+1. Ask the storyteller a question with no extra signal. Save that answer.
+2. Ask the same question while adding the chosen signal. Save that answer too.
+3. Compare the answers and record exactly which setting you used.
+4. Remove the extra signal when the experiment finishes.
+
+```mermaid
+---
+config:
+  fontFamily: Arial, Helvetica, sans-serif
+  fontSize: 18
+  themeVariables:
+    fontFamily: Arial, Helvetica, sans-serif
+    fontSize: 18px
+  flowchart:
+    nodeSpacing: 28
+    rankSpacing: 42
+    padding: 14
+---
+flowchart TB
+  accTitle: The same question with and without an intervention
+  accDescr: The same prompt gets a usual answer and a temporarily nudged answer. Compare the answers and record what changed.
+  Q["Your question"]:::input --> B["Usual answer"]:::local
+  Q --> S["Nudged answer"]:::choice
+  B --> C["Compare both answers"]:::evidence
+  S --> C
+  C --> J["Save what changed<br/>and what is still uncertain"]:::evidence
+  classDef input fill:#DBEAFE,stroke:#2563EB,color:#172554,stroke-width:2px;
+  classDef local fill:#CCFBF1,stroke:#0F766E,color:#134E4A,stroke-width:2px;
+  classDef choice fill:#FEF3C7,stroke:#B45309,color:#78350F,stroke-width:2px;
+  classDef evidence fill:#EDE9FE,stroke:#7C3AED,color:#3B0764,stroke-width:2px;
+  classDef remote fill:#FCE7F3,stroke:#BE185D,color:#831843,stroke-width:2px;
+  classDef limit fill:#FEE2E2,stroke:#DC2626,color:#7F1D1D,stroke-width:2px;
+```
+
+The signal's **direction** comes from one of the model's existing projection
+vectors. The **dose** controls how much signal is added. Coordinates are numeric
+positions; understanding their effect requires experiments. A change might alter
+word choice, style, coherence or factual reliability, and it might have little
+visible effect on a particular question.
+
+The intervention lasts for the current generation. It does not rewrite the
+model's saved weights or train a new model. Neuronpedia helps you explore research
+about model features; its feature coordinates need their own model/SAE context.
+
+**Three useful words:** weights are the model’s saved settings; activations are
+its temporary readings for a question; steering adds a temporary signal during
+a run. More terms have [short ELI5 definitions in the glossary](VISUAL_GUIDE.md#16-glossary-and-a-worked-experiment).
+
+## Visual feature map
+
+Choose the question you want to answer. This map is a quick reference; the table
+above is the fastest way to get started. The full [visual guide](VISUAL_GUIDE.md)
+walks through every command, concept and evidence boundary. Blue marks inputs,
+teal local computation, amber choices, purple evidence, pink service-side research,
+and red limits. Labels carry the same meaning without relying on color.
+
+<details>
+<summary>Open the visual command map</summary>
+
+```mermaid
+---
+config:
+  fontFamily: Arial, Helvetica, sans-serif
+  fontSize: 18
+  themeVariables:
+    fontFamily: Arial, Helvetica, sans-serif
+    fontSize: 18px
+  flowchart:
+    nodeSpacing: 28
+    rankSpacing: 42
+    padding: 14
+---
+flowchart LR
+  accTitle: Choose the command for your question
+  accDescr: Inspect checks capabilities, probe ranks observational candidates, generate produces text, evaluate compares trials, and neuronpedia performs explicit research.
+  Q{"Choose your goal"}:::input
+  Q --> I["inspect<br/>Read model details"]:::local
+  I --> IL["Add --load<br/>Check real layer shapes"]:::choice
+  Q --> P["probe<br/>Find candidates"]:::local
+  P --> H["Candidates to test<br/>You choose the targets"]:::evidence
+  Q --> G["generate<br/>Write one response"]:::local
+  Q --> E["evaluate<br/>Compare paired trials"]:::evidence
+  Q --> N["neuronpedia<br/>Explore feature research"]:::remote
+  classDef input fill:#DBEAFE,stroke:#2563EB,color:#172554,stroke-width:2px;
+  classDef local fill:#CCFBF1,stroke:#0F766E,color:#134E4A,stroke-width:2px;
+  classDef choice fill:#FEF3C7,stroke:#B45309,color:#78350F,stroke-width:2px;
+  classDef evidence fill:#EDE9FE,stroke:#7C3AED,color:#3B0764,stroke-width:2px;
+  classDef remote fill:#FCE7F3,stroke:#BE185D,color:#831843,stroke-width:2px;
+  classDef limit fill:#FEE2E2,stroke:#DC2626,color:#7F1D1D,stroke-width:2px;
+```
+
+</details>
+
+A practical path is **inspect → probe → choose explicit targets → evaluate**.
+Probing proposes hypotheses; paired experiments and controls test their effects.
+Neuronpedia adds research context with its own model/feature coordinate system.
+
 ## How it works
+
+> **ELI5:** Read the question, run the model, optionally add a measured signal,
+> compare the answer, and remove the temporary instructions.
+
+<details>
+<summary>Open the six-step technical walkthrough</summary>
 
 ### 1. Prepare a bounded job
 
@@ -175,10 +221,22 @@ relative to the prompt's observed residual magnitude. For example, if `m = 6`,
 This is a mathematical normalization, not a guarantee of a particular behavior.
 
 ```mermaid
+---
+config:
+  fontFamily: Arial, Helvetica, sans-serif
+  fontSize: 18
+  themeVariables:
+    fontFamily: Arial, Helvetica, sans-serif
+    fontSize: 18px
+  flowchart:
+    nodeSpacing: 28
+    rankSpacing: 42
+    padding: 14
+---
 flowchart TB
   accTitle: A worked example of prompt-relative dose
   accDescr: Median residual norm six, projection norm two and dose one half give scale one point five and injected norm three.
-M["Prompt residual norm<br/>m = 6"]:::input --> S["scale = dose × m / norm(v)<br/>0.5 × 6 / 2 = 1.5"]:::choice
+  M["Prompt residual norm<br/>m = 6"]:::input --> S["scale = dose × m / norm(v)<br/>0.5 × 6 / 2 = 1.5"]:::choice
   V["Projection vector norm<br/>norm(v) = 2"]:::input --> S
   D["Signed dose<br/>dose = +0.5"]:::input --> S
   S --> A["Injection = 1.5 × v<br/>Injection norm = 3"]:::local
@@ -237,6 +295,9 @@ atomically. JSON is the recovery checkpoint if Markdown is stale after a crash.
 
 For tensor shapes, the exact median convention, checkpoint validation and transport
 details, see [design.md](design.md).
+
+
+</details>
 
 ## Examples
 

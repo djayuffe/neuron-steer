@@ -1,0 +1,227 @@
+{
+  "date": "2026-11-16",
+  "scope": "Readability and documentation only; runtime unchanged",
+  "base_commit": "9983a89cc9a4ad361140770971c6631c1db30d7f",
+  "structure": [
+    "installation before large concept diagrams",
+    "goal-based reading paths",
+    "ELI5 before technical concepts",
+    "visible key points with expandable derivations",
+    "two-column grouped glossary",
+    "compact phone-friendly beginner diagram"
+  ],
+  "fonts": {
+    "diagram_family": "Arial, Helvetica, sans-serif",
+    "rendered_label_px": 18,
+    "markdown_body": "controlled by GitHub/viewer"
+  },
+  "rendered_diagrams": 26,
+  "links_and_anchors_checked": 73,
+  "link_issues": [],
+  "existing_heading_anchors_preserved": {
+    "ARCHITECTURE.md": 3,
+    "NEURONPEDIA.md": 6,
+    "README.md": 24,
+    "design.md": 15,
+    "VISUAL_GUIDE.md": 19
+  },
+  "balanced_details": true,
+  "preview": {
+    "renderer": "local GitHub-style Markdown preview; native HTML details",
+    "viewport_widths": [
+      390,
+      1024
+    ],
+    "page_checks": 8,
+    "overflowing_pages": 0,
+    "eli5_callouts_visible": 32,
+    "expanded_diagrams_visible": true,
+    "light_dark_samples": "reviewed; translucent phase fills retained"
+  },
+  "mermaid_cli": "11.12.0",
+  "mermaid_engine": "11.17.2",
+  "diagrams": [
+    {
+      "source": "NEURONPEDIA.md",
+      "index": 1,
+      "sha256": "d20c0d09da083b856272deaa434e176a3e51c7b0fe2e6c17793f0cd956a60fae",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "NEURONPEDIA.md",
+      "index": 2,
+      "sha256": "d03036ddb87473fcbf99939cda1cec0c42ee2e30494d4ed2d2e27db69ed7a506",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "README.md",
+      "index": 1,
+      "sha256": "572ee31f1639f31b14d5d2198d9c2f6cf94ae7a7e1888bae3d0bbed9c3eac122",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "README.md",
+      "index": 2,
+      "sha256": "f19c4c5a8b62b55f8d4363a1b9b39eb405476a6235b501b8616b518e7ff019d9",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "README.md",
+      "index": 3,
+      "sha256": "f8babece74a61a87d1161ed3b5613e87766019d8bc8901c30d19971cf6f19fe0",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 1,
+      "sha256": "572ee31f1639f31b14d5d2198d9c2f6cf94ae7a7e1888bae3d0bbed9c3eac122",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 2,
+      "sha256": "f19c4c5a8b62b55f8d4363a1b9b39eb405476a6235b501b8616b518e7ff019d9",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 3,
+      "sha256": "606af3aa71c98f96815ae7295b1a6066966c77212feb9e7298080a46cf547b9f",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 4,
+      "sha256": "60bf3dfbc7de490f06ee092695f3c9c01ea4c3b9c138301fd05e8b60e0e22787",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 5,
+      "sha256": "189af8834ae206c5815d96cc79aa69d7be0bf9f51be2a7886cf590e6f4948f7e",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 6,
+      "sha256": "f8babece74a61a87d1161ed3b5613e87766019d8bc8901c30d19971cf6f19fe0",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 7,
+      "sha256": "d37adb0af7b0f68d7c050e71b8689fe9e331af910630375abec25e17b0752fbc",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 8,
+      "sha256": "5914e681f55604501383fb799e7261b4dec2547f460378d101e83458195a9945",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 9,
+      "sha256": "21e337ee058d77c684d714b7c16cf2b7053b436aa8558b708fbd53873380b569",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 10,
+      "sha256": "948eef38c0e8832cf8419324bb5c03d963309729d061ee93279172e57482388e",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 11,
+      "sha256": "7847dfc60303fcb309a45817deb8710abe73b0ada5e1584cc849382d52de2339",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 12,
+      "sha256": "3160e2e5d6bf64935ffda8958261c91a64bb4edfe47484b64871fba81fd7aa0a",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 13,
+      "sha256": "d20c0d09da083b856272deaa434e176a3e51c7b0fe2e6c17793f0cd956a60fae",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 14,
+      "sha256": "cbbee58e9d0ee24b1bc897dd51608ec59f0cc820fe820a4170add39eb27b1f1a",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 15,
+      "sha256": "9d13d230d3172b5ec88378b403f01521ed506d216d9808f5b97047b9e3042c65",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 16,
+      "sha256": "8c276bbe6dbedd08c9fe9dfa4750a6e338ef05339910b3cec520b5f3ece7cda7",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "design.md",
+      "index": 1,
+      "sha256": "4312faf4b2880fd6e844a68796923ca7301a575606b14e03cfe637fabe02b987",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "design.md",
+      "index": 2,
+      "sha256": "60bf3dfbc7de490f06ee092695f3c9c01ea4c3b9c138301fd05e8b60e0e22787",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "design.md",
+      "index": 3,
+      "sha256": "d37adb0af7b0f68d7c050e71b8689fe9e331af910630375abec25e17b0752fbc",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "design.md",
+      "index": 4,
+      "sha256": "3160e2e5d6bf64935ffda8958261c91a64bb4edfe47484b64871fba81fd7aa0a",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    },
+    {
+      "source": "design.md",
+      "index": 5,
+      "sha256": "5914e681f55604501383fb799e7261b4dec2547f460378d101e83458195a9945",
+      "font_px": 18,
+      "accessible_title_and_description": true
+    }
+  ]
+}

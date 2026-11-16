@@ -58,3 +58,9 @@ should communicate meaning independently of color. Prefer small flowcharts over
 large graphs, and explain observational evidence separately from causal claims.
 Render changed Mermaid blocks to verify syntax, legible labels and unclipped
 layouts. Diagram edits do not require model inference when behavior is unchanged.
+
+For reader-facing material, lead with an ELI5 explanation and a key point. Keep
+advanced derivations in labeled expandable sections, preserve heading anchors,
+and group glossary terms by topic. GitHub controls Markdown body fonts; Mermaid
+blocks explicitly use 18px sans-serif labels with consistent node spacing. Keep
+colors theme-independent and check light/dark previews after layout changes.
