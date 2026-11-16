@@ -1,0 +1,258 @@
+{
+  "date": "2026-11-16",
+  "scope": "Documentation only; runtime source unchanged",
+  "mermaid_cli": "11.12.0",
+  "mermaid_engine": "11.17.2",
+  "rendered_blocks": 26,
+  "unique_diagram_sources": 18,
+  "svg_accessible_titles_and_descriptions": 26,
+  "local_links_and_anchors_checked": 54,
+  "link_issues": [],
+  "visual_qa": {
+    "all_unique_layouts": "reviewed in light-mode contact sheets",
+    "dark_mode_samples": [
+      "command selection",
+      "hook lifetime",
+      "evaluation controls",
+      "native versus SAE coordinates"
+    ],
+    "contrast_fix": "translucent sequence phase backgrounds preserve light/dark label contrast",
+    "png_previews": "local review artifacts; editable Mermaid remains in Markdown"
+  },
+  "diagrams": [
+    {
+      "source": "NEURONPEDIA.md",
+      "index": 1,
+      "line": 7,
+      "source_sha256": "bf7d3ecd346a38c32323b474fc77d97af02f9db688277bafeeae4fcdc6e69fe5",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0 0 929.609375 1219.78125"
+    },
+    {
+      "source": "NEURONPEDIA.md",
+      "index": 2,
+      "line": 88,
+      "source_sha256": "5f3aa708b1c4e9abf68f4c7bc01473785dc02ccfbecfe77d8a6a142f171e6242",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0 0 733.70703125 1227.828125"
+    },
+    {
+      "source": "README.md",
+      "index": 1,
+      "line": 28,
+      "source_sha256": "05d75b5933370b045d286abddf4b87224918dab355a0a180a016db56f060a2a8",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0 0 563.875 454"
+    },
+    {
+      "source": "README.md",
+      "index": 2,
+      "line": 63,
+      "source_sha256": "7723d7271c98c33f73a083b981b7c06d3ba6258d8392c71d94b11f9299e400e3",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0.5 0 878 702"
+    },
+    {
+      "source": "README.md",
+      "index": 3,
+      "line": 177,
+      "source_sha256": "03703b7d805e4010c45b041d5d93a09ffcf09a860df32e5adc0ec8cf4056c376",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0 0 700.78125 502"
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 1,
+      "line": 49,
+      "source_sha256": "05d75b5933370b045d286abddf4b87224918dab355a0a180a016db56f060a2a8",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0 0 563.875 454"
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 2,
+      "line": 76,
+      "source_sha256": "7723d7271c98c33f73a083b981b7c06d3ba6258d8392c71d94b11f9299e400e3",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0.5 0 878 702"
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 3,
+      "line": 112,
+      "source_sha256": "02c3a5b280503b97bf027fbd0fb6f8d8ef28f87fed9aa3c0534369e135f40468",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0 0 508.703125 910"
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 4,
+      "line": 141,
+      "source_sha256": "019652f991bc40ad090cc6081426df367d27275f00819fe90a244504af542969",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0 0 578.40625 1421"
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 5,
+      "line": 179,
+      "source_sha256": "d3b710d28fb92b935736881add1a40eebf1577fa1f1a7b15e078b53e571e2baa",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0 0 394.625 931.125"
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 6,
+      "line": 213,
+      "source_sha256": "03703b7d805e4010c45b041d5d93a09ffcf09a860df32e5adc0ec8cf4056c376",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0 0 700.78125 502"
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 7,
+      "line": 248,
+      "source_sha256": "54f84b5814d53358eabeaa052a772cb0feda7c69d11d9d20ab4357bc8bbd8047",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "-127.5 -10 937.5 977"
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 8,
+      "line": 291,
+      "source_sha256": "a3da0a56448ea264272ebc9c1e72de4e225cb8f6ef57718f795b62be25f6f9a4",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0 0 566.84375 1478"
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 9,
+      "line": 333,
+      "source_sha256": "54890b4fd4a8f51f4f1a1594a325c157e17b70598cc65b8cb583e4ceca9bf995",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0 0 890.203125 758"
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 10,
+      "line": 382,
+      "source_sha256": "bb34cc24f467e6f8b95830e7371884234e493dbc0fb661226f8f388c0296f1fc",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0 0 1010.91015625 1522.78125"
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 11,
+      "line": 424,
+      "source_sha256": "552348b25b0aa5b363d13603a431a3137d3566b92167f557c11af45298f76a89",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0 0 869.359375 822"
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 12,
+      "line": 461,
+      "source_sha256": "f66ebf163341965fba96655c4c800c179e31831466e03c0b638e56dd30c43543",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0 0 930.19921875 1799.109375"
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 13,
+      "line": 502,
+      "source_sha256": "bf7d3ecd346a38c32323b474fc77d97af02f9db688277bafeeae4fcdc6e69fe5",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0 0 929.609375 1219.78125"
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 14,
+      "line": 525,
+      "source_sha256": "58c16830eba0360765768081ea93bace46b23dad0c07cb1bcda1f144df83a350",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0 0 586 574"
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 15,
+      "line": 565,
+      "source_sha256": "45c7d14dff53a7826d568cc3a4e850ccb6d54137e5108f70c516d6569d2c3176",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0 0 896 983.015625"
+    },
+    {
+      "source": "VISUAL_GUIDE.md",
+      "index": 16,
+      "line": 603,
+      "source_sha256": "617bf9eb651aacae6cc2a0ef37039a85f64dbdd01737b1c6ad07ea9272b9e5e6",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0 0 896 922"
+    },
+    {
+      "source": "design.md",
+      "index": 1,
+      "line": 38,
+      "source_sha256": "cc444967ec0f1cee6a5081bdf62f4f0302d497d40d8f02f3e9482c52ad2fb322",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0 0 916 1039.1875"
+    },
+    {
+      "source": "design.md",
+      "index": 2,
+      "line": 116,
+      "source_sha256": "019652f991bc40ad090cc6081426df367d27275f00819fe90a244504af542969",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0 0 578.40625 1421"
+    },
+    {
+      "source": "design.md",
+      "index": 3,
+      "line": 215,
+      "source_sha256": "54f84b5814d53358eabeaa052a772cb0feda7c69d11d9d20ab4357bc8bbd8047",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "-127.5 -10 937.5 977"
+    },
+    {
+      "source": "design.md",
+      "index": 4,
+      "line": 339,
+      "source_sha256": "f66ebf163341965fba96655c4c800c179e31831466e03c0b638e56dd30c43543",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0 0 930.19921875 1799.109375"
+    },
+    {
+      "source": "design.md",
+      "index": 5,
+      "line": 534,
+      "source_sha256": "a3da0a56448ea264272ebc9c1e72de4e225cb8f6ef57718f795b62be25f6f9a4",
+      "rendered": true,
+      "accessible_title_and_description": true,
+      "viewbox": "0 0 566.84375 1478"
+    }
+  ]
+}

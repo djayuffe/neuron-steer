@@ -9,7 +9,7 @@ Inspect supported projections, discover observational candidates from your own
 prompt categories, and test them with explicit controls. The model's weight files
 stay unchanged.
 
-[ELI5](#eli5) · [Install](#install) · [How it works](#how-it-works) ·
+[Visual guide](VISUAL_GUIDE.md) · [ELI5](#eli5) · [Install](#install) · [How it works](#how-it-works) ·
 [Examples](#examples) · [Neuronpedia](#neuronpedia) · [Limits](#limits)
 
 ## ELI5
@@ -25,6 +25,24 @@ Here is the experiment:
 3. Compare the answers and record exactly which setting you used.
 4. Remove the extra signal when the experiment finishes.
 
+```mermaid
+flowchart TB
+  accTitle: The same question with and without an intervention
+  accDescr: One prompt has an unhooked baseline and a steered response. Compare the outputs and remove temporary hooks.
+Q["One explicit question"]:::input --> B["Baseline<br/>No steering hooks"]:::local
+  Q --> S["Steered<br/>Temporary extra signal"]:::choice
+  B --> C["Compare complete outputs"]:::evidence
+  S --> C
+  S --> R["Remove temporary hooks"]:::local
+  C --> J["Record what changed<br/>and what remains uncertain"]:::evidence
+  classDef input fill:#DBEAFE,stroke:#2563EB,color:#172554,stroke-width:2px;
+  classDef local fill:#CCFBF1,stroke:#0F766E,color:#134E4A,stroke-width:2px;
+  classDef choice fill:#FEF3C7,stroke:#B45309,color:#78350F,stroke-width:2px;
+  classDef evidence fill:#EDE9FE,stroke:#7C3AED,color:#3B0764,stroke-width:2px;
+  classDef remote fill:#FCE7F3,stroke:#BE185D,color:#831843,stroke-width:2px;
+  classDef limit fill:#FEE2E2,stroke:#DC2626,color:#7F1D1D,stroke-width:2px;
+```
+
 The signal's **direction** comes from one of the model's existing projection
 vectors. The **dose** controls how much signal is added. Coordinates are numeric
 positions; understanding their effect requires experiments. A change might alter
@@ -34,6 +52,37 @@ visible effect on a particular question.
 The intervention lasts for the current generation. It does not rewrite the
 model's saved weights or train a new model. Neuronpedia helps you explore research
 about model features; its feature coordinates need their own model/SAE context.
+
+## Visual feature map
+
+Start with the question you want to answer. The full [visual guide](VISUAL_GUIDE.md)
+walks through every command, concept and evidence boundary. Blue marks inputs,
+teal local computation, amber choices, purple evidence, pink service-side research,
+and red limits. Labels carry the same meaning without relying on color.
+
+```mermaid
+flowchart LR
+  accTitle: Choose the command for your question
+  accDescr: Inspect checks capabilities, probe ranks observational candidates, generate produces text, evaluate compares trials, and neuronpedia performs explicit research.
+Q{"What do you want to learn?"}:::input
+  Q --> I["inspect<br/>What does this checkpoint claim?"]:::local
+  I --> IL["Add --load<br/>Verify projection structure"]:::choice
+  Q --> P["probe<br/>Which native coordinates respond?"]:::local
+  P --> H["Candidate hypotheses<br/>Choose targets explicitly"]:::evidence
+  Q --> G["generate<br/>One baseline or intervention"]:::local
+  Q --> E["evaluate<br/>Paired trials and controls"]:::evidence
+  Q --> N["neuronpedia<br/>Metadata, features and text analysis"]:::remote
+  classDef input fill:#DBEAFE,stroke:#2563EB,color:#172554,stroke-width:2px;
+  classDef local fill:#CCFBF1,stroke:#0F766E,color:#134E4A,stroke-width:2px;
+  classDef choice fill:#FEF3C7,stroke:#B45309,color:#78350F,stroke-width:2px;
+  classDef evidence fill:#EDE9FE,stroke:#7C3AED,color:#3B0764,stroke-width:2px;
+  classDef remote fill:#FCE7F3,stroke:#BE185D,color:#831843,stroke-width:2px;
+  classDef limit fill:#FEE2E2,stroke:#DC2626,color:#7F1D1D,stroke-width:2px;
+```
+
+A practical path is **inspect → probe → choose explicit targets → evaluate**.
+Probing proposes hypotheses; paired experiments and controls test their effects.
+Neuronpedia adds research context with its own model/feature coordinate system.
 
 ## Install
 
@@ -124,6 +173,24 @@ The injected vector's norm is approximately `abs(d) × m`. This makes the dose
 relative to the prompt's observed residual magnitude. For example, if `m = 6`,
 `||v||₂ = 2`, and `d = 0.5`, then `scale = 1.5` and the injection norm is `3`.
 This is a mathematical normalization, not a guarantee of a particular behavior.
+
+```mermaid
+flowchart TB
+  accTitle: A worked example of prompt-relative dose
+  accDescr: Median residual norm six, projection norm two and dose one half give scale one point five and injected norm three.
+M["Prompt residual norm<br/>m = 6"]:::input --> S["scale = dose × m / norm(v)<br/>0.5 × 6 / 2 = 1.5"]:::choice
+  V["Projection vector norm<br/>norm(v) = 2"]:::input --> S
+  D["Signed dose<br/>dose = +0.5"]:::input --> S
+  S --> A["Injection = 1.5 × v<br/>Injection norm = 3"]:::local
+  A --> O["Add at projection output<br/>during prompt processing and decode"]:::choice
+  classDef input fill:#DBEAFE,stroke:#2563EB,color:#172554,stroke-width:2px;
+  classDef local fill:#CCFBF1,stroke:#0F766E,color:#134E4A,stroke-width:2px;
+  classDef choice fill:#FEF3C7,stroke:#B45309,color:#78350F,stroke-width:2px;
+  classDef evidence fill:#EDE9FE,stroke:#7C3AED,color:#3B0764,stroke-width:2px;
+  classDef remote fill:#FCE7F3,stroke:#BE185D,color:#831843,stroke-width:2px;
+  classDef limit fill:#FEE2E2,stroke:#DC2626,color:#7F1D1D,stroke-width:2px;
+```
+
 
 Scaling uses float32 before conversion to the projection dtype. Invalid norms,
 non-finite scales and dtype overflow are rejected before steering hooks are used.
@@ -463,6 +530,7 @@ output is not guaranteed to produce a better or more meaningful intervention.
 
 | Document | Purpose |
 | --- | --- |
+| [VISUAL_GUIDE.md](VISUAL_GUIDE.md) | Colorful diagrams, ELI5 explanations, command map, glossary and a worked research workflow. |
 | [design.md](design.md) | Detailed algorithm, tensor shapes, local/API data flow and checkpoint semantics. |
 | [NEURONPEDIA.md](NEURONPEDIA.md) | API workflow, self-hosting and transport boundaries. |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Module map, development checks and packaging. |

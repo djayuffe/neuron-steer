@@ -4,15 +4,20 @@ Version 0.4.0 · 2026-11-16
 
 This document explains what the program actually computes, which component owns
 each step, how results can be reproduced, and where the guarantees end. The CLI
-has two execution domains: local dense-MLP steering, and explicitly requested
-Neuronpedia API research. A research URL can be recorded with a local experiment
+has two execution domains: local model research, and explicitly requested
+Neuronpedia API research. Local commands inspect configurations/projections,
+profile prompt activations, generate text and compare controlled interventions. A research URL can be recorded with a local experiment
 without contacting the website or changing the local target selection.
+
+For a picture-first tour and glossary, see [VISUAL_GUIDE.md](VISUAL_GUIDE.md).
+The diagrams here focus on implementation ownership and state transitions.
 
 ## 1. Goals and boundaries
 
-The local path loads an existing Transformers causal-language-model checkpoint,
-generates a response, and optionally adds calibrated projection vectors through
-temporary hooks. Evaluation compares the same explicit prompt under an unhooked
+Static inspection reads configuration without loading weights. Other local
+research paths load an existing Transformers causal-language-model checkpoint
+to inspect supported projections, profile activations or generate responses.
+Steered generation adds calibrated projection vectors through temporary hooks. Evaluation compares the same explicit prompt under an unhooked
 baseline and the chosen intervention. No model-weight file is edited.
 
 The Neuronpedia path exposes public model/source metadata, feature dashboards,
@@ -31,20 +36,26 @@ targets select local hooks. `--reference` URLs are annotations only.
 ## 2. Components and data flow
 
 ```mermaid
-flowchart TD
-  CLI[CLI and bounded explicit stdin] --> Mode{Operation}
-  Mode --> Preview[Dry-run or feature link: no worker/network/model]
-  Mode --> Local[generate or evaluate job]
-  Mode --> Remote[Explicit neuronpedia job]
-  Local --> Child[Bounded subprocess and strict JSON]
-  Remote --> Child
-  Child --> Runtime[LocalRuntime: optional offline Transformers loading]
-  Child --> API[NeuronpediaClient: verified HTTPS or loopback webapp]
-  Runtime --> Hooks[Calibrate, install hooks, reset seed, generate, remove hooks]
-  Hooks --> Pair[Paired records and descriptive metrics]
-  Pair --> Files[Locked, protected, atomic reports]
-  API --> Response[Bounded response with source and execution-scope metadata]
-  References[Validated research URLs] --> Local
+flowchart TB
+  accTitle: Architecture and actual operation routing
+  accDescr: The parent handles previews and offline links. Other work uses a bounded worker, routing local configuration, model-backed jobs and explicit Neuronpedia API requests to distinct paths.
+C["CLI: explicit inputs + deadline"]:::input --> P{"Dry-run or offline link?"}:::choice
+  P -- "Yes" --> V["Validate and return preview/link<br/>No model loading or HTTP"]:::evidence
+  P -- "No" --> W["Bounded worker + strict JSON"]:::local
+  W --> R{"Operation"}:::choice
+  R --> I["inspect without --load<br/>Read bounded local config"]:::local
+  R --> L["Loaded inspect / probe / generate / evaluate<br/>LocalRuntime: installed offline weights"]:::local
+  R --> N["Explicit neuronpedia API<br/>Verified transport; no local model"]:::remote
+  I --> O["Structured evidence or diagnostic"]:::evidence
+  L --> O
+  N --> O
+  L --> E["evaluate only<br/>Locked JSON checkpoint + final Markdown"]:::evidence
+  classDef input fill:#DBEAFE,stroke:#2563EB,color:#172554,stroke-width:2px;
+  classDef local fill:#CCFBF1,stroke:#0F766E,color:#134E4A,stroke-width:2px;
+  classDef choice fill:#FEF3C7,stroke:#B45309,color:#78350F,stroke-width:2px;
+  classDef evidence fill:#EDE9FE,stroke:#7C3AED,color:#3B0764,stroke-width:2px;
+  classDef remote fill:#FCE7F3,stroke:#BE185D,color:#831843,stroke-width:2px;
+  classDef limit fill:#FEE2E2,stroke:#DC2626,color:#7F1D1D,stroke-width:2px;
 ```
 
 | Module | Owns |
@@ -55,6 +66,9 @@ flowchart TD
 | `jobs.py` | Local-job validation, annotation normalization, model/report paths, paired evaluation and checkpoint identity. |
 | `runtime.py` | Optional library imports, local loading, templates, device/context selection, sampling and hook lifetime. |
 | `steering.py` | Target parser, supported module layout discovery, calibration and additive hooks. |
+| `research.py` | Static/loaded inspection, bounded activation profiles and category-contrast rankings. |
+| `experiments.py` | Seed/dose grids, explicit control arms and answer-key matching. |
+| `provenance.py` | Recoverable manifests, source hashes and optional asset content identity. |
 | `evaluation.py` | Prompt loading, text metrics, summary tables, escaped Markdown and reference annotations. |
 | `storage.py` | Strict JSON, bounded file reads, unique temporary files, flush/fsync and atomic replacement. |
 | `neuronpedia.py` | URL/endpoint validation, API payloads, bounded transport, research metadata and offline link/reference helpers. |
@@ -66,6 +80,11 @@ local evaluation job replaces the single prompt with an explicit prompt-file pat
 and output paths. A Neuronpedia job contains resource identifiers and explicit
 text only when the selected API operation needs it. It never goes through
 `LocalRuntime` and never loads local weights.
+
+Inspection jobs read config by default and load weights only with `--load`.
+Probe jobs identify an explicit prompt file, selected layers, position policy and
+optional category contrast. They observe unmodified forwards and return native
+coordinate hypotheses, rather than generated responses or trained weights.
 
 ## 3. Local loading and prompt preparation
 
@@ -93,6 +112,30 @@ checked against the smaller positive bound from `--context-size` and known model
 `max_position_embeddings`. With only one known bound, that bound is used. With
 neither, the model owns context enforcement. The program does not silently trim
 the prompt or claim that a larger option expands model context.
+
+```mermaid
+flowchart TB
+  accTitle: Prompt preparation preserves actual model inputs
+  accDescr: Resolve a template and role policy, render once, tokenize with the appropriate special-token setting, check context, and preserve every model input.
+P["Explicit prompt + system instruction"]:::input --> T{"Chat template available?"}:::choice
+  T -- "Yes" --> N["Resolve named/default template<br/>Apply system-role policy"]:::local
+  N --> R["Render once<br/>Pass thinking flag if advertised"]:::local
+  R --> C["Tokenize rendered chat<br/>add_special_tokens=False"]:::local
+  T -- "No" --> F["Plain System/User/Assistant format<br/>Tokenizer special tokens enabled"]:::local
+  C --> B{"Input plus completion<br/>fits known context bound?"}:::choice
+  F --> B
+  B -- "No" --> X["Clear error<br/>No silent trimming"]:::limit
+  B -- "Yes" --> M["Capture IDs, masks, token types<br/>values + dtypes + hashes"]:::evidence
+  classDef input fill:#DBEAFE,stroke:#2563EB,color:#172554,stroke-width:2px;
+  classDef local fill:#CCFBF1,stroke:#0F766E,color:#134E4A,stroke-width:2px;
+  classDef choice fill:#FEF3C7,stroke:#B45309,color:#78350F,stroke-width:2px;
+  classDef evidence fill:#EDE9FE,stroke:#7C3AED,color:#3B0764,stroke-width:2px;
+  classDef remote fill:#FCE7F3,stroke:#BE185D,color:#831843,stroke-width:2px;
+  classDef limit fill:#FEE2E2,stroke:#DC2626,color:#7F1D1D,stroke-width:2px;
+```
+
+The generation branch above reserves completion tokens; probe reserves only its
+input tokens. All captured model-input tensors include their dtype and hash.
 
 ## 4. Target meaning and tensor shapes
 
@@ -168,6 +211,41 @@ A zero dose installs a zero-vector control; a paired baseline installs no hooks.
 Those are distinct execution paths, even when their intended output perturbation
 is zero. The hook adds a projection-output contribution; it does not directly set
 an internal neuron's preactivation value.
+
+```mermaid
+sequenceDiagram
+  accTitle: Temporary hook lifetime during steered generation
+  accDescr: Calibration observers are removed before intervention hooks are installed. Generation records actual hook calls and always removes intervention handles on normal Python return or error.
+  autonumber
+  participant R as Runtime
+  participant M as Local model
+  participant H as Hook records
+  rect rgba(37, 99, 235, 0.12)
+    R->>M: Install calibration observers
+    R->>M: Run unsteered prompt forward
+    M-->>R: Residual norms at selected layers
+    R->>M: Remove calibration observers
+  end
+  rect rgba(245, 158, 11, 0.12)
+    R->>R: Compute and validate fixed injection vectors
+    R->>M: Install temporary intervention hooks
+    R->>R: Reset generation seed
+    R->>M: Generate with recorded settings
+    loop Every executed selected projection
+      M->>H: Add vector, count calls and positions
+    end
+  end
+  rect rgba(124, 58, 237, 0.12)
+    R->>H: Verify every target executed
+    H-->>R: Calls, positions and norms
+    R->>M: Finally remove intervention hooks
+    Note over R,M: Cleanup also runs on Python errors
+  end
+```
+
+This sequence is the steered path. Unhooked baseline generation skips calibration
+and intervention hooks. Hard process termination discards worker memory rather
+than running Python finally blocks.
 
 ## 6. Generation, cleanup and output interpretation
 
@@ -254,9 +332,33 @@ atomically replaces the checkpoint. The JSON limit is 128 MiB. Markdown is
 replaced independently with escaped labels and dynamic code fences longer than
 any tilde run in generated content. A crash can leave current JSON and stale
 Markdown; a completed compatible resume regenerates Markdown without a model.
-A partially generated pair is rerun after interruption. Lock files persist, while
+An incomplete trial, including requested controls, is rerun after interruption. Lock files persist, while
 OS locks release on exit. Local hostile filesystem races and unusual network
 filesystem semantics are outside these cooperative locking guarantees.
+
+```mermaid
+flowchart TB
+  accTitle: Checkpoint recovery preserves complete trials
+  accDescr: Resume requires a compatible existing v3 checkpoint. Completed trials are reused, incomplete trials rerun, and Markdown can be rebuilt from complete JSON.
+R["New run or --resume"]:::input --> G["Check report paths and acquire locks"]:::local
+  G --> Q{"Resume requested?"}:::choice
+  Q -- "No" --> N["Require fresh report paths<br/>Load model and run the first trial"]:::local
+  Q -- "Yes" --> V{"Existing v3 JSON, manifest,<br/>records and settings compatible?"}:::choice
+  V -- "No" --> X["Fail clearly<br/>Choose fresh paths or correct settings"]:::limit
+  V -- "Yes" --> C{"Every trial already complete?"}:::choice
+  C -- "Yes" --> M["Rebuild Markdown from JSON<br/>No model loading needed"]:::evidence
+  C -- "No" --> T["Load model; compare runtime metadata<br/>Skip completed trials"]:::local
+  T --> U["Rerun an interrupted partial trial<br/>including every requested control"]:::local
+  N --> S["After a complete trial<br/>Atomically replace JSON"]:::evidence
+  U --> S
+  S --> F["At completion<br/>Write final summary and Markdown"]:::evidence
+  classDef input fill:#DBEAFE,stroke:#2563EB,color:#172554,stroke-width:2px;
+  classDef local fill:#CCFBF1,stroke:#0F766E,color:#134E4A,stroke-width:2px;
+  classDef choice fill:#FEF3C7,stroke:#B45309,color:#78350F,stroke-width:2px;
+  classDef evidence fill:#EDE9FE,stroke:#7C3AED,color:#3B0764,stroke-width:2px;
+  classDef remote fill:#FCE7F3,stroke:#BE185D,color:#831843,stroke-width:2px;
+  classDef limit fill:#FEE2E2,stroke:#DC2626,color:#7F1D1D,stroke-width:2px;
+```
 
 ## 9. Neuronpedia request flow
 
@@ -364,7 +466,7 @@ The request shapes and model/SAE distinctions are based on primary sources:
 See [NEURONPEDIA.md](NEURONPEDIA.md) for command examples and
 [ARCHITECTURE.md](ARCHITECTURE.md) for the shorter maintenance overview.
 
-## 12. Correctness evidence and controlled experiments (0.3.0)
+## 13. Correctness evidence and controlled experiments (0.3.0)
 
 Prompt preparation resolves dictionary templates before checking `enable_thinking`.
 It renders the chosen template with `tokenize=False`, then tokenizes with
@@ -414,7 +516,7 @@ saved after a full trial; interrupted partial trials rerun all arms. CI exercise
 core Python/platform variants plus actual tiny random Transformers models under
 two library versions, without downloading pretrained weights.
 
-## 13. Inspect, probe, then validate (0.4.0)
+## 14. Inspect, probe, then validate (0.4.0)
 
 Two research operations use the same bounded worker and offline loader as existing
 jobs. Static `inspect` reads bounded local config/tokenizer metadata, including
@@ -428,6 +530,27 @@ It verifies structural compatibility, not every possible hook execution path.
 Linear and GPT-2 Conv1D coordinates use the same validation and orientation.
 Quantized/non-floating weights and invalid dimensions are rejected. Unsupported
 blocks retain diagnostic entries in inspection; selecting one for probing fails.
+
+```mermaid
+flowchart TB
+  accTitle: How observational probing ranks candidates
+  accDescr: Unmodified forwards expose projection input activations. Position selection and equal-prompt weighting lead to contribution magnitude or a signed category contrast, then a ranking to validate.
+P["Explicit discovery prompts<br/>Optional positive/negative categories"]:::input --> F["Unmodified prompt forwards<br/>No generation or intervention"]:::local
+  F --> A["Observe projection input a[p,t,j]<br/>Select last, all or skip-first positions"]:::local
+  A --> M["Average selected tokens within each prompt<br/>Give each prompt equal weight"]:::local
+  M --> C{"Category contrast requested?"}:::choice
+  C -- "No" --> U["Mean absolute activation<br/>× projection-vector norm"]:::evidence
+  C -- "Yes" --> S["Absolute difference of signed category means<br/>× projection-vector norm"]:::evidence
+  U --> K["Top candidates per layer<br/>Scores + signed means + exact inputs"]:::evidence
+  S --> K
+  K --> V["Test on separate validation prompts<br/>with explicit doses and controls"]:::choice
+  classDef input fill:#DBEAFE,stroke:#2563EB,color:#172554,stroke-width:2px;
+  classDef local fill:#CCFBF1,stroke:#0F766E,color:#134E4A,stroke-width:2px;
+  classDef choice fill:#FEF3C7,stroke:#B45309,color:#78350F,stroke-width:2px;
+  classDef evidence fill:#EDE9FE,stroke:#7C3AED,color:#3B0764,stroke-width:2px;
+  classDef remote fill:#FCE7F3,stroke:#BE185D,color:#831843,stroke-width:2px;
+  classDef limit fill:#FEE2E2,stroke:#DC2626,color:#7F1D1D,stroke-width:2px;
+```
 
 A probe accepts an explicit prompt file, up to 64 selected records, 1–8 unique
 layers, 1–64 top candidates per layer and at most 4,096 input tokens per prompt

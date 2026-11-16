@@ -20,3 +20,8 @@ not improved behavior or universal model compatibility.
 `expansion-v0.4.0.json` records 99 local tests, independent real-forward probe
 math checks, installed-wheel inspection/probing and a Qwen3.5-4B activation probe.
 Candidate ranks are observations and do not establish behavioral improvement.
+
+`visual-docs-2026-11-16.json` records 26 rendered Mermaid blocks (18 distinct
+diagrams), 54 checked local links/anchors, accessible SVG titles/descriptions
+and light/dark layout review. These are documentation checks; runtime source
+was unchanged. See [the visual guide](../VISUAL_GUIDE.md).

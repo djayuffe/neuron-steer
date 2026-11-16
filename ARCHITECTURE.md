@@ -1,6 +1,7 @@
 # Maintainer overview
 
 Use [design.md](design.md) as the authoritative algorithm and data-flow explanation.
+The [visual guide](VISUAL_GUIDE.md) explains concepts through diagrams and a glossary.
 The [README](README.md) owns installation and the common workflow;
 [NEURONPEDIA.md](NEURONPEDIA.md) owns API examples. Keep option defaults in the CLI
 and update these guides when behavior changes.
@@ -48,3 +49,12 @@ and offline installed-CLI checks. Tensor tests skip when torch is absent; record
 local checks cover real tensor math. Two additional CPU jobs exercise real
 Transformers 4.40.2 and 5.23.0 tiny-model loading, tokenization, hooks and probing. Historical experiments are not reclassified
 as current validation. See [AUDIT.md](AUDIT.md) for scope and residual limits.
+
+## Documentation diagram maintenance
+
+Keep command routing, hook lifetime and checkpoint diagrams aligned with source.
+Use the palette and accessible titles/descriptions from `VISUAL_GUIDE.md`; labels
+should communicate meaning independently of color. Prefer small flowcharts over
+large graphs, and explain observational evidence separately from causal claims.
+Render changed Mermaid blocks to verify syntax, legible labels and unclipped
+layouts. Diagram edits do not require model inference when behavior is unchanged.

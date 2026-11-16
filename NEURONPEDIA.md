@@ -4,6 +4,33 @@ Neuronpedia commands perform explicit hosted research or use a selected loopback
 Neuronpedia webapp. They are separate from local Transformers hooks. No SDK,
 torch installation or local weights are needed for these commands.
 
+```mermaid
+flowchart TB
+  accTitle: Local annotations and explicit API research have different data paths
+  accDescr: Local references are saved without HTTP. Explicit Neuronpedia operations may contact the service and text operations submit only explicit stdin. SAE feature coordinates are not local native-neuron coordinates.
+U["Neuronpedia feature URL"]:::input --> Q{"Chosen use"}:::choice
+  Q -- "--reference on a local job" --> A["Validate and store annotation<br/>No HTTP request"]:::local
+  A --> J["Local generate / evaluate / probe<br/>Native coordinates chosen explicitly"]:::evidence
+  Q -- "neuronpedia link" --> L["Return dashboard URL<br/>No HTTP request"]:::local
+  Q -- "Explicit API operation" --> R["models / model / source / feature<br/>or search / activate / top / steer"]:::remote
+  R --> D{"Text operation?"}:::choice
+  D -- "No" --> M["Request metadata or dashboard data"]:::remote
+  D -- "Yes, explicit --stdin required" --> T["Submit only supplied text<br/>Service may retain it"]:::remote
+  M --> O["Bounded API JSON response"]:::evidence
+  T --> O
+  O -. "Human research context only" .-> J
+  classDef input fill:#DBEAFE,stroke:#2563EB,color:#172554,stroke-width:2px;
+  classDef local fill:#CCFBF1,stroke:#0F766E,color:#134E4A,stroke-width:2px;
+  classDef choice fill:#FEF3C7,stroke:#B45309,color:#78350F,stroke-width:2px;
+  classDef evidence fill:#EDE9FE,stroke:#7C3AED,color:#3B0764,stroke-width:2px;
+  classDef remote fill:#FCE7F3,stroke:#BE185D,color:#831843,stroke-width:2px;
+  classDef limit fill:#FEE2E2,stroke:#DC2626,color:#7F1D1D,stroke-width:2px;
+```
+
+Solid API paths below require an explicit command; the dotted relationship is
+human research context, not a coordinate conversion. See the
+[visual explanation of SAE versus native coordinates](VISUAL_GUIDE.md#13-neuronpedia-and-coordinate-systems).
+
 ## Public discovery and dashboards
 
 ```sh
@@ -57,6 +84,29 @@ Dry-run prints its explicit text locally but never reads or prints API-key value
 No call/message history is fetched by this independent package.
 
 ## Credentials, self-hosting and time limits
+
+```mermaid
+flowchart TB
+  accTitle: Explicit API requests validate endpoint, text, credentials and response
+  accDescr: A requested Neuronpedia operation validates an official HTTPS or loopback endpoint, reads an optional named key from the environment, and validates bounded responses without redirects, proxies or automatic retries.
+  C["Explicit Neuronpedia command"]:::input --> V["Validate operation, IDs and endpoint<br/>Require supplied text for text operations"]:::local
+  V --> P{"--dry-run?"}:::choice
+  P -- "Yes" --> D["Show request plan locally<br/>No API key values printed"]:::evidence
+  P -- "No" --> Q["Build bounded request<br/>Official verified HTTPS or loopback webapp"]:::remote
+  K["Optional named environment variable<br/>Credential value kept out of arguments"]:::input --> A["Attach x-api-key header<br/>only for the explicit request"]:::local
+  A --> Q
+  Q --> T["Enforce deadline and response bounds<br/>No redirects, proxies or auto retries"]:::remote
+  T --> J{"Body and JSON valid?"}:::choice
+  J -- "Yes" --> R["Structured result + execution scope"]:::evidence
+  J -- "No / too large / compressed" --> E["Bounded error diagnostic"]:::limit
+  classDef input fill:#DBEAFE,stroke:#2563EB,color:#172554,stroke-width:2px;
+  classDef local fill:#CCFBF1,stroke:#0F766E,color:#134E4A,stroke-width:2px;
+  classDef choice fill:#FEF3C7,stroke:#B45309,color:#78350F,stroke-width:2px;
+  classDef evidence fill:#EDE9FE,stroke:#7C3AED,color:#3B0764,stroke-width:2px;
+  classDef remote fill:#FCE7F3,stroke:#BE185D,color:#831843,stroke-width:2px;
+  classDef limit fill:#FEE2E2,stroke:#DC2626,color:#7F1D1D,stroke-width:2px;
+```
+
 
 ```sh
 python -m neuron_steer neuronpedia models --api-key-env NEURONPEDIA_API_KEY
