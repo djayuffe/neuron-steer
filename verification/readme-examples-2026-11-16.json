@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-16",
+  "scope": "README explanations and new example prompt file only; runtime code unchanged",
+  "dry_run_examples": [
+    {
+      "readme_shell_block": 3,
+      "passed": true,
+      "model_loaded": false,
+      "network_request_performed": false
+    },
+    {
+      "readme_shell_block": 6,
+      "passed": true,
+      "model_loaded": false,
+      "network_request_performed": false
+    },
+    {
+      "readme_shell_block": 7,
+      "passed": true,
+      "model_loaded": false,
+      "network_request_performed": false
+    },
+    {
+      "readme_shell_block": 11,
+      "passed": true,
+      "model_loaded": false,
+      "network_request_performed": false
+    },
+    {
+      "readme_shell_block": 12,
+      "passed": true,
+      "model_loaded": false,
+      "network_request_performed": false
+    }
+  ],
+  "live_examples": "Generation/evaluation require an operator-supplied compatible checkpoint and chosen coordinates. Public API examples use the previously verified routes.",
+  "model_weights_loaded_for_doc_checks": false,
+  "text_submitted_to_hosted_services": false
+}

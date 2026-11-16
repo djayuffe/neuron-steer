@@ -1,75 +1,282 @@
 # neuron-steer
 
-**0.2.1 · Python 3.10+ · macOS/Linux**
+**0.2.1 · Python 3.10+ · macOS/Linux · MIT**
 
-Generate with an installed Transformers model, compare baseline and temporary MLP
-interventions, and research features through explicitly selected Neuronpedia APIs.
-The core CLI needs only Python; live local generation requires optional runtime
-packages. Local commands never fetch Neuronpedia references or read private
-communication history. Weight files are not modified.
+Explore how temporary changes to a language model's internal computation affect
+its responses. Generate an unhooked baseline, apply explicit MLP projection
+interventions, compare paired outputs, and research features through Neuronpedia.
+The model's weight files stay unchanged.
+
+[ELI5](#eli5) · [Install](#install) · [How it works](#how-it-works) ·
+[Examples](#examples) · [Neuronpedia](#neuronpedia) · [Limits](#limits)
+
+## ELI5
+
+Imagine a robot storyteller with a huge mixing desk inside it. Its ordinary
+settings help it choose the next word. We can temporarily add a little extra
+signal at one exact place on that desk and listen to how the story changes.
+
+Here is the experiment:
+
+1. Ask the storyteller a question with no extra signal. Save that answer.
+2. Ask the same question while adding the chosen signal. Save that answer too.
+3. Compare the answers and record exactly which setting you used.
+4. Remove the extra signal when the experiment finishes.
+
+The signal's **direction** comes from one of the model's existing projection
+vectors. The **dose** controls how much signal is added. Coordinates are numeric
+positions; understanding their effect requires experiments. A change might alter
+word choice, style, coherence or factual reliability, and it might have little
+visible effect on a particular question.
+
+The intervention lasts for the current generation. It does not rewrite the
+model's saved weights or train a new model. Neuronpedia helps you explore research
+about model features; its feature coordinates need their own model/SAE context.
 
 ## Install
 
-Choose a supported Python environment first; the examples call it `python`.
-An older interpreter is rejected rather than bypassing the package requirement.
+Choose a Python **3.10+** environment first. The commands below call it `python`;
+use an explicit supported interpreter if your shell selects an older version.
 
 ```sh
-python -m pip install -e .               # core CLI, dry-runs, Neuronpedia client
-python -m pip install -e '.[runtime]'    # optional torch/Transformers/safetensors
+git clone https://github.com/djayuffe/neuron-steer.git
+cd neuron-steer
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
 neuron-steer --help
 ```
 
-Installing missing runtime packages can download dependencies. Loading a model
-requires an existing local safetensors checkpoint/tokenizer; the application never
-downloads model or SAE weights. Ollama/GGUF/MLX checkpoints are not directly loaded.
-Use the runtime versions required by your model; minimum dependencies do not imply
-support for every architecture or hardware configuration.
-
-## Preview or run local generation
+The core package uses Python's standard library. Dry-runs, offline links and the
+Neuronpedia API client work without torch or local weights. To run local models:
 
 ```sh
-# Preview without model loading, report writes or network requests.
-neuron-steer generate --model /path/to/model --baseline --prompt 'Hello' --dry-run
-
-# Unhooked generation with explicit stdin.
-printf '%s' 'Write a short greeting.' | neuron-steer generate \
-  --model /path/to/model --baseline --stdin --device mps --max-tokens 32
-
-# Preview an explicit intervention. Repeat --neuron for up to eight targets.
-neuron-steer generate --model /path/to/model --neuron 0:0:0 \
-  --prompt 'Write a short greeting.' --dry-run
+python -m pip install -e '.[runtime]'
 ```
 
-`--baseline` and `--neuron` are mutually exclusive. A zero-dose target calibrates
-and installs a zero-vector hook; `--baseline` installs no hooks. Nonzero targets
-must be chosen for the exact model/projection layout. Native MLP coordinates and
-Neuronpedia SAE coordinates are not interchangeable.
+This can download Python dependencies. The application itself loads an **existing
+local Transformers safetensors checkpoint and tokenizer** with offline loading
+settings and remote model code disabled. It never downloads model or SAE weights.
+Use runtime versions appropriate for your exact model. Ollama/GGUF/MLX checkpoints
+are not directly loaded by this implementation.
 
-## Compare paired outputs
+## How it works
+
+### 1. Prepare a bounded job
+
+The CLI validates settings, target coordinates and research references before
+waiting for stdin. Prompts are explicit: either `--prompt` or `--stdin` for one
+generation, or a named/bundled JSON prompt set for evaluation. No private
+communication history is discovered or read.
+
+A bounded child process runs live work. Local jobs construct `LocalRuntime`;
+explicit Neuronpedia jobs construct the HTTP client instead. The CLI enforces a
+total timeout and caps child stdout/stderr, then cleans up the worker process
+group on timeout or cancellation.
+
+### 2. Load and format the local model
+
+The runtime selects the requested device, loads local weights and tokenizer,
+applies the model's chat template and counts input tokens. `--device auto` prefers
+CUDA, then MPS, then CPU. The input-plus-completion budget is checked against the
+requested context bound and known model configuration. Model/hardware memory
+limits still apply.
+
+`generate --baseline` proceeds directly to generation without inspecting MLP
+projection layouts, calibrating norms or installing hooks. An explicit
+`--neuron LAYER:NEURON:DOSE` job performs the following extra steps.
+
+### 3. Find the projection direction
+
+A typical MLP output projection maps a wide internal representation back into
+the model's residual stream. For a standard Linear projection:
+
+```text
+W has shape [residual_width, mlp_width]
+v = W[:, neuron_index]
+```
+
+`v` describes the residual-space direction associated with that internal
+coordinate. For GPT-2 Conv1D-style transposed storage, the implementation selects
+the corresponding row instead. The selected layer, neuron and tensor orientation
+are validated against the loaded model.
+
+### 4. Calibrate the dose to the prompt
+
+The program runs the prompt once without steering and observes the hidden output
+of each selected decoder block. For the first batch element, it computes the
+median residual-vector norm across prompt positions, excluding position zero when
+there is more than one position. A single-position prompt uses that one position.
+
+For a selected projection vector `v` and signed dose `d`:
+
+```text
+m         = median prompt residual norm at the selected layer
+scale     = d × m / ||v||₂
+injection = scale × v
+```
+
+The injected vector's norm is approximately `abs(d) × m`. This makes the dose
+relative to the prompt's observed residual magnitude. For example, if `m = 6`,
+`||v||₂ = 2`, and `d = 0.5`, then `scale = 1.5` and the injection norm is `3`.
+This is a mathematical normalization, not a guarantee of a particular behavior.
+
+Scaling uses float32 before conversion to the projection dtype. Invalid norms,
+non-finite scales and dtype overflow are rejected before steering hooks are used.
+
+### 5. Add the vector during generation, then remove the hooks
+
+A temporary forward hook adds the calibrated vector to the projection output:
+
+```text
+projection_output[..., :] += injection
+```
+
+The vector broadcasts across token positions during prompt processing and decode.
+Its direction and magnitude stay fixed for that generation. Multiple targets are
+calibrated from the same unsteered prompt pass and add their respective vectors.
+Positive dose adds a direction; negative dose subtracts it. This operates on the
+projection output rather than directly assigning a neuron's preactivation value.
+
+The seed is reset immediately before generation, after calibration. Every steering
+hook is removed in a `finally` block, including when generation fails. A zero-dose
+target still performs calibration and installs a zero-vector hook; a baseline
+installs no hooks. Both paths are useful controls, but have different execution
+costs and are recorded separately.
+
+### 6. Compare outputs and save reproducible records
+
+Evaluation loads the model once and generates two responses per prompt: unhooked
+baseline, then selected intervention, using the same settings and seed. It records
+complete decoded text, token counts, timing, calibration and descriptive text
+metrics. Seeded equality across hardware/library versions is not promised.
+
+Checkpoints are written after complete pairs. They identify the selected prompts,
+settings, references, package/runtime versions and tracked local model assets.
+`--resume` requires an existing compatible checkpoint. Report paths are protected
+from model/input overwrites and competing writers; each report is replaced
+atomically. JSON is the recovery checkpoint if Markdown is stale after a crash.
+
+For tensor shapes, the exact median convention, checkpoint validation and transport
+details, see [design.md](design.md).
+
+## Examples
+
+Commands after installation can also be run as `python -m neuron_steer ...` from
+the same environment. Replace `/absolute/path/to/model` with an existing local
+checkpoint. Examples with `--dry-run` do not load weights or make API requests.
+
+### A. Preview an unhooked baseline without weights
 
 ```sh
-neuron-steer evaluate --model /path/to/model --neuron 0:0:0 \
-  --limit 2 --max-tokens 32 --output results/control.json --timeout 300
+neuron-steer generate --model /absolute/path/to/model --baseline \
+  --prompt 'Write one friendly greeting.' --dry-run
 ```
 
-The example is a zero-dose control. Every prompt has an unhooked baseline and a
-selected intervention, with matched settings and seed. The model loads once per
-evaluation. The default is the bundled 100-prompt set; `--prompts FILE` chooses a
-JSON list of `{ "category": "label", "prompt": "explicit text" }` records.
-`--limit 0` means all prompts. Results include full texts, descriptive metrics,
-calibration and token-budget flags; keyword counts are not quality or safety scores.
+The JSON preview shows the job, empty targets, and that model dimensions were
+not validated. A dry-run confirms settings; it does not prove a model fits memory.
 
-JSON checkpoints are saved after complete pairs, with a Markdown report alongside.
-`--resume` requires the existing compatible checkpoint; it never silently starts a
-new run. Changed settings, references, package/runtime versions or tracked model
-assets require new report paths. Existing reports remain untouched on validation
-failure. A complete resume can rebuild Markdown without loading a model.
+### B. Generate a real baseline
 
-Use `--dry-run` to check prompt parsing, selected count and output paths. It does
-not load weights, validate model dimensions or fully validate a resume checkpoint.
-See [design.md](design.md) for path protection, locks, identity and recovery limits.
+```sh
+neuron-steer generate --model /absolute/path/to/model --baseline \
+  --prompt 'Write one friendly greeting.' --max-tokens 32 --seed 0
+```
 
-## Neuronpedia research
+Use stdin for explicit text you prefer to keep out of shell arguments:
+
+```sh
+printf '%s' 'Write one friendly greeting.' | neuron-steer generate \
+  --model /absolute/path/to/model --baseline --stdin --max-tokens 32
+```
+
+Selected fields from the recorded local Qwen3.5-4B baseline smoke test are shown
+below. Other models/settings can produce different output and token counts.
+
+```json
+{
+  "mode": "baseline",
+  "content": "Hello!",
+  "tokens": 5,
+  "input_tokens": 39,
+  "reached_token_budget": false,
+  "steering": null
+}
+```
+
+### C. Preview or apply an explicit intervention
+
+```sh
+neuron-steer generate --model /absolute/path/to/model --neuron 0:0:0.25 \
+  --prompt 'Write one friendly greeting.' --max-tokens 32 --seed 0 --dry-run
+```
+
+`0:0:0.25` means layer 0, neuron coordinate 0, dose +0.25. It is an illustrative
+coordinate, not a discovered “friendly greeting” feature. Verify the model layout
+and choose a meaningful target for your experiment, then remove `--dry-run` to
+execute it. Repeat `--neuron` for multiple unique targets. Use `0:0:0` for a
+zero-dose control on a supported projection. `--baseline` and `--neuron` cannot
+be combined.
+
+### D. Preview and run a small paired evaluation
+
+Run the following paired examples from the cloned repository root.
+The three neutral prompts are in [examples/prompts.json](examples/prompts.json).
+First validate the selected prompt count and output paths:
+
+```sh
+neuron-steer evaluate --model /absolute/path/to/model --neuron 0:0:0.25 \
+  --prompts examples/prompts.json --limit 2 --max-tokens 64 --seed 0 \
+  --output results/example.json --timeout 300 --dry-run
+```
+
+Remove `--dry-run` to execute the two baseline/intervention pairs:
+
+```sh
+neuron-steer evaluate --model /absolute/path/to/model --neuron 0:0:0.25 \
+  --prompts examples/prompts.json --limit 2 --max-tokens 64 --seed 0 \
+  --output results/example.json --timeout 300
+```
+
+Inspect `results/example.json` and `results/example.md`. Use `--limit 0` for the
+whole selected prompt set. Omit `--prompts` to use the bundled 100-prompt set.
+JSON prompt records have `category` and `prompt` strings; exact prompt whitespace
+is preserved.
+
+### E. Resume an interrupted evaluation
+
+Repeat the original settings and add `--resume`:
+
+```sh
+neuron-steer evaluate --model /absolute/path/to/model --neuron 0:0:0.25 \
+  --prompts examples/prompts.json --limit 2 --max-tokens 64 --seed 0 \
+  --output results/example.json --timeout 300 --resume
+```
+
+Completed pairs are retained; a partial pair is rerun. A completed compatible
+checkpoint can rebuild Markdown without loading weights. Changed settings,
+references, package/runtime versions or tracked model assets require new report
+paths. Missing or incompatible checkpoints fail rather than starting a fresh run.
+
+### F. Interpret the result fields
+
+| Field | Meaning |
+| --- | --- |
+| `mode` | `baseline` for unhooked generation; `steered` for explicit targets, including zero dose. |
+| `content` | Newly generated text, decoded without special tokens and stripped at the edges. |
+| `input_tokens` / `tokens` | Encoded input length / newly generated token count. |
+| `reached_token_budget` | Output met the token budget without ending on a configured EOS ID; inspect for truncation. |
+| `steering.neurons` | Per-target calibration, vector norm and scale for an intervention; baseline steering is `null`. |
+| `runtime` | Loaded model path, device and runtime versions. |
+| `neuronpedia_references` | Research annotations, never automatically fetched or converted into targets. |
+
+Evaluation summaries also show changed responses, text similarity, length and
+keyword counts. These describe the outputs; read the actual text before drawing
+conclusions. They do not establish quality, safety, factuality or causality.
+
+## Neuronpedia
+
+Explore public model/source metadata or a feature dashboard:
 
 ```sh
 neuron-steer neuronpedia models
@@ -77,29 +284,72 @@ neuron-steer neuronpedia feature \
   --url https://www.neuronpedia.org/gemma-2-2b/20-gemmascope-res-16k/10956
 ```
 
-The client supports discovery, explanation search, activation/top-feature tests,
-service-side steering and offline feature links. Text operations require explicit
-stdin, and hosted text may be retained by the service. Add `--dry-run` to inspect
-requests locally. Local `generate`/`evaluate` accept optional `--reference URL`
-annotations; these URLs are never fetched or applied as targets.
+Preview explanation search using explicit text:
 
-[NEURONPEDIA.md](NEURONPEDIA.md) contains API examples, credentials and self-hosting.
+```sh
+printf '%s' 'meeting proposals' | neuron-steer neuronpedia search \
+  --model gemma-2-2b --source 20-gemmascope-res-16k --stdin --dry-run
+```
+
+Removing `--dry-run` submits that text to the selected service, where it may be
+retained. The client also supports activation tests, top-feature inference,
+service-side steering and offline links. See [NEURONPEDIA.md](NEURONPEDIA.md) for
+credentials, self-hosting and full examples.
+
+To annotate a local experiment without contacting Neuronpedia:
+
+```sh
+neuron-steer generate --model /absolute/path/to/model --baseline \
+  --prompt 'A synthetic example.' \
+  --reference https://www.neuronpedia.org/gemma-2-2b/20-gemmascope-res-16k/10956 \
+  --dry-run
+```
+
+| Coordinate or reference | Scope |
+| --- | --- |
+| Local `LAYER:NEURON:DOSE` | An explicit native MLP projection coordinate in the loaded local model. |
+| Neuronpedia `MODEL/SOURCE/INDEX` | A feature or vector interpreted within that model/source/hook configuration. |
+| Local `--reference URL` | A stored research annotation; no network request, weight download or target mapping. |
+
+An SAE feature would require its exact decoder, base model, hook and normalization
+to reproduce locally. A dashboard URL alone does not provide that adapter.
+
+## Limits
+
+The CLI supports macOS/Linux and compatible local Transformers causal models.
+Steering requires a supported dense projection layout; baseline generation avoids
+that extra layout requirement. Hardware, memory and runtime versions constrain
+which checkpoints can load. Offline loading flags are library configuration,
+not an OS network sandbox. Generated models have no actions or tools in this app.
+
+Common options are `--device`, `--max-tokens`, `--temperature`, `--seed`,
+`--context-size`, `--thinking`, and the total-command `--timeout`. The CLI help and
+[design.md](design.md) document bounds and exact behavior. Larger dose or longer
+output is not guaranteed to produce a better or more meaningful intervention.
+
+| Problem | Check |
+| --- | --- |
+| Command not found | Activate the environment used for installation, or use `python -m neuron_steer`. |
+| Python version rejected | Select Python 3.10+; do not bypass the package requirement. |
+| Model files missing | Point to a complete existing local checkpoint/tokenizer. No automatic model download occurs. |
+| Unsupported projection | Check the model's architecture; `--baseline` can run without projection hooks if the loader supports the model. |
+| Report already exists | Resume a compatible evaluation or choose new report paths. |
+| Resume settings differ | Preserve the original inputs/settings/environment or start a fresh report. |
+| Output ends early | Inspect `reached_token_budget`, EOS behavior and the model's context/output settings. |
+| API request fails | Check exact Neuronpedia IDs, inference availability, credentials and HTTP diagnostics. |
 
 ## Documentation and verification
 
 | Document | Purpose |
 | --- | --- |
-| [design.md](design.md) | Detailed steering math, tensor shapes, local/API data flow, limits and checkpoint semantics. |
-| [NEURONPEDIA.md](NEURONPEDIA.md) | Research API workflow and transport boundaries. |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Maintainer module map and verification commands. |
-| [AUDIT.md](AUDIT.md) | Current fixes, evidence and remaining limits. |
+| [design.md](design.md) | Detailed algorithm, tensor shapes, local/API data flow and checkpoint semantics. |
+| [NEURONPEDIA.md](NEURONPEDIA.md) | API workflow, self-hosting and transport boundaries. |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Module map, development checks and packaging. |
+| [AUDIT.md](AUDIT.md) | Concrete fixes, evidence and remaining limits. |
 | [CHANGELOG.md](CHANGELOG.md) | Release and compatibility history. |
-| [verification/README.md](verification/README.md) | Provenance of standalone checks versus historical experiments. |
-
-Temporary hooks can change style, coherence and factual reliability. No generated
-model has actions or tools in this application. Offline loading flags are library
-configuration, not an OS network sandbox. Supported layouts and exact resource
-bounds are documented in the design; universal model compatibility is not claimed.
+| [verification/README.md](verification/README.md) | Standalone checks versus historical experiment provenance. |
 
 Extracted from CallAI's steering experiments as an independent MIT-licensed
-package. The original attribution and historical experiment artifacts are retained.
+package. Original attribution and historical artifacts are retained. See the
+verification records for the exact models, controls and environments tested;
+universal model compatibility or bug-free operation is not claimed.

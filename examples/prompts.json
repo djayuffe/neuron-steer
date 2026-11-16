@@ -1,0 +1,5 @@
+[
+  {"category": "greeting", "prompt": "Write one friendly sentence greeting a new teammate."},
+  {"category": "explanation", "prompt": "Explain why leaves can change color in autumn in one sentence."},
+  {"category": "creative", "prompt": "Write one sentence describing a quiet seaside morning."}
+]
