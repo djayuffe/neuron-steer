@@ -76,7 +76,12 @@
       "4.40.2",
       "5.23.0"
     ],
-    "status": "see linked workflow for commit-specific outcome"
+    "status": "see linked workflow for commit-specific outcome",
+    "actions": {
+      "checkout": "v7.0.1, pinned commit",
+      "setup-python": "v7.1.0, pinned commit",
+      "runtime": "Node24"
+    }
   },
   "limits": [
     "No universal model correctness claim",
