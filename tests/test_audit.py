@@ -150,7 +150,11 @@ class AuditTests(unittest.TestCase):
             prompts = jobs.load_prompts(pathlib.Path(job["prompts"]))
             before = jobs.checkpoint_identity(job, prompts)
             with mock.patch.object(
-                jobs.importlib.metadata, "version", return_value="changed-version"
+                __import__(
+                    "neuron_steer.provenance", fromlist=["importlib"]
+                ).importlib.metadata,
+                "version",
+                return_value="changed-version",
             ):
                 self.assertNotEqual(before, jobs.checkpoint_identity(job, prompts))
 
@@ -186,7 +190,7 @@ class AuditTests(unittest.TestCase):
             payload["records"][0]["prompt"] = "[link](https://example.com)|\n# title"
             text = evaluation.markdown(payload)
             self.assertIn("# 1-prompt", text)
-            self.assertIn("| Runs | 1 | 1 |", text)
+            self.assertIn("| Main-arm runs | 1 | 1 |", text)
             self.assertIn("~~~~~text\n~~~~", text)
             self.assertIn(r"\[link\]", text)
 

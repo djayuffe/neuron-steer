@@ -1,40 +1,39 @@
-# Current audit — 0.2.1
+# Current audit — 0.3.0
 
-Date: 2026-11-15. Scope: CLI, local runtime selection, checkpoint identity,
-JSON boundaries, Neuronpedia regression coverage and documentation. This records
-concrete fixed issues; it is not a guarantee that all possible failures are known.
+Date: 2026-11-16. Scope: prompt fidelity, real tokenizer errors, hook execution,
+experiment provenance, evaluation controls and regression checks. This records
+reproduced issues and their fixes; universal model correctness is not established.
 
 | Finding | Implemented behavior |
 | --- | --- |
-| Invalid local options could block while waiting for stdin. | Scalar, target and reference preflight runs before stdin. |
-| Missing resume files silently started a fresh evaluation. | `--resume` requires an existing JSON checkpoint; validation fails before model loading. |
-| Tokenizer files and nested weight shards were absent from identity. | Recursively track safetensors and known config/tokenizer/vocabulary assets by relative name, size and mtime. |
-| Strict JSON accepted overflow numbers and unpaired surrogates. | Reject exponent overflow, invalid Unicode keys/values, duplicates, non-finite values and excess depth. |
-| Optional checkpoint metadata and format versions accepted wrong types. | Input-token counts, budget flags and version integers are validated. |
-| Unhooked standalone generation required a dummy neuron coordinate. | `generate --baseline` needs no target and never installs calibration/steering hooks. |
-| Dry-run evaluation did not check its actual inputs/outputs. | Validate prompt files, count limits and report paths; no weights or output files are loaded/created. |
-| Report directory/device paths produced late filesystem errors. | Reject non-file output targets explicitly. |
-| Programmatic jobs and CLI symlink loops used inconsistent path handling. | Canonicalize model/input paths before output guards; preserve output symlink checks and return clean CLI path diagnostics. |
-| Guides repeated material and mixed historical claims with current behavior. | Short README/maintainer overview; detailed design and API guide remain canonical. Historical audits are preserved separately. |
+| Rendered chat templates could receive a second BOS token. | Tokenize rendered templates without adding special tokens; real tokenizer regression. |
+| Actual Jinja system-role rejection bypassed fallback. | Explicit role policies and recognized role-error fallback; unrelated/syntax errors propagate. |
+| Dictionary template keys hid thinking controls in template values. | Resolve named/default template before detecting and passing the thinking flag. |
+| Hook installation was reported as successful application. | Per-target execution counters; fail unused hooks and always clean up. |
+| Output reports omitted recoverable settings/template defaults. | Full experiment and per-generation manifests, exact token IDs and effective decoding configuration. |
+| Editable source/system-policy changes could mix resumed experiments. | Source and system hashes in v3 identity; optional asset content hashes and shard-index validation. |
+| Single uncontrolled comparisons could imply unsupported improvements. | Repeated seeds, dose sweeps, alternating main-arm order and four explicit control families. |
+| Text heuristics could be mistaken for correctness measurements. | Operator answer keys, truncation-aware scoring, explicit denominators and prompt-cluster uncertainty. |
+| Forced EOS at the token limit hid possible truncation. | Conservative budget flag regardless of final EOS. |
+| Model generation defaults could return multiple beams/sequences silently. | Explicit single-beam/single-output policy; retain and record other effective defaults. |
 
-Tests reproduce these failures and cover baseline dispatch, offline references,
-Neuronpedia contracts/loopback transport, real-tensor math, overflow prevention,
-hook cleanup, checkpoint locks, atomic writes and report protection. Exact checks
-and counts are recorded in [verification/polish-v0.2.1.json](verification/polish-v0.2.1.json).
+The suite includes real tokenizer/Jinja and tiny random GPT-2 safetensors tests,
+without pretrained downloads. It covers BOS fidelity, role handling, named
+thinking templates, GPT-2 projection orientation, hook execution/cleanup, random
+norm controls, manifests, v3 resume, answer keys and exclusions. See
+[verification/correctness-v0.3.0.json](verification/correctness-v0.3.0.json) for measured checks.
 
 ## Remaining boundaries
 
-- macOS/Linux only; the worker and report locks use POSIX APIs.
-- Metadata fingerprints are not full weight hashes or signed provenance.
-  Hidden files and symlinked model directories are not recursively fingerprinted.
-- Report guards/locks protect cooperative runs, not hostile local filesystem races.
-  JSON and Markdown are independently atomic; JSON is the recovery checkpoint.
-- A dry-run does not load weights, prove target dimensions, check available memory
-  or guarantee resume compatibility. See [design.md](design.md).
-- Offline loading is library configuration, not an OS network sandbox. Explicit
-  Neuronpedia operations can submit/store text; local references never do.
-- Supported dense projection layouts only. Model effects and seeded reproducibility
-  vary by architecture, runtime and hardware; text metrics are descriptive.
+Supported dense projection layouts only; hosted/GGUF/MLX engines do not expose
+these hooks. Asset metadata mode is weaker than content hashes; neither creates
+signed provenance or protects hostile filesystem races. Reports are independently
+atomic. Exact behavioral reproducibility varies with runtime/hardware. Answer
+matching checks supplied keys, not semantic truth; small datasets, correlated
+seeds and exploratory confidence intervals can mislead. More models and curated
+benchmarks require separate validation. Offline loading flags are library settings,
+not an OS network sandbox. Neuronpedia references remain annotations; explicit API
+operations have their documented transport and submission behavior.
 
-[Historical findings through 0.2.0](docs/history/audit-through-0.2.0.md) retain the
-original audit provenance. [CHANGELOG.md](CHANGELOG.md) records compatibility changes.
+Earlier audit fixes remain in place: [0.2.1](docs/history/audit-v0.2.1.md) and
+[through 0.2.0](docs/history/audit-through-0.2.0.md).

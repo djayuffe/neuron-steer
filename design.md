@@ -1,6 +1,6 @@
 # Design: local neuron steering and Neuronpedia research
 
-Version 0.2.1 · 2026-11-15
+Version 0.3.0 · 2026-11-16
 
 This document explains what the program actually computes, which component owns
 each step, how results can be reproduced, and where the guarantees end. The CLI
@@ -81,10 +81,11 @@ are passed to the model and encoded inputs. Availability and memory capacity are
 still runtime constraints; the application does not promise that a model fits.
 
 The tokenizer's chat template formats a system message and the exact explicit
-prompt. If that template rejects the two-role form, a single-user form combines
-the system text and prompt. Without a template, a plain System/User/Assistant
+prompt. With the default auto policy, recognized system-role rejection retries a
+single-user form combining the system text and prompt. Merge and strict policies
+select that format explicitly or disable fallback. Without a template, a plain System/User/Assistant
 completion format is used. Thinking is disabled only when the template advertises
-`enable_thinking`; `--thinking` leaves it enabled. Arbitrary models can implement
+`enable_thinking`; `--thinking` requests it enabled. Arbitrary models can implement
 different reasoning conventions, so this is not universal reasoning suppression.
 
 The input-token count comes from the encoded sequence. The completion budget is
@@ -125,7 +126,8 @@ of an unsteered prompt forward pass. If the block returns a tuple, its first ite
 is used as the hidden state. Expected shape is `[batch, tokens, residual_width]`.
 The CLI operates on one prompt, and calibration uses batch element zero.
 
-For multiple prompt positions, position zero is excluded. This is a positional
+With `--calibration skip-first` (default), position zero is excluded for multiple
+prompt positions; `--calibration all` includes every position. This is a positional
 rule; the program does not inspect whether that token is actually BOS. For a
 single-position prompt, its one position is used. Each selected hidden vector is
 converted to float32 before computing its Euclidean norm. `torch.median` supplies
@@ -180,9 +182,10 @@ decoded, with special tokens skipped; the returned content is stripped at its
 edges. Output-token counts therefore refer to tokens, while metrics compare the
 final decoded/stripped strings. Empty output is a possible model result.
 
-`reached_token_budget` reports that the generated count met the output budget and
-the final token was not one of the configured EOS IDs. It is a useful exhaustion
-signal, not a universal explanation of every model-specific stopping rule.
+`reached_token_budget` reports that the generated count met the output budget,
+even with a final EOS (which may have been forced at the limit). The same
+conservative flag is exposed as `possibly_truncated`. Stop reasons are inferred,
+not a universal explanation of every model-specific stopping rule.
 
 Every installed steering handle is removed in a `finally` block. A generation
 exception therefore cannot leave hooks on a runtime reused for the next prompt.
@@ -217,14 +220,23 @@ file or model files. Symlink report paths are rejected. A new run refuses existi
 JSON or Markdown. Non-blocking advisory locks cover both paths in deterministic
 order, including a Markdown file shared by otherwise different JSON outputs.
 
-Checkpoint format v2 stores a fingerprint of selected prompts, targets,
-generation settings, references, model path/file metadata, package/Python/runtime
-versions and Markdown path. Weight identity tracks relative names, sizes and modification times recursively
-for safetensors shards, known configuration/tokenizer/vocabulary assets and
-tiktoken files, including nested weight files. Hidden directories and symlinked
-directory traversal are not included. This is metadata identity, not a full tensor
-hash. Checkpoints are not signed provenance. A partial
-resume also compares resolved runtime metadata before generating further pairs.
+Checkpoint format **v3** stores both a recoverable `experiment_manifest` and its
+SHA256 fingerprint. Identity covers selected prompts and answer keys, targets,
+reference annotations, source-file hashes, literal system instruction, generation
+and prompt policies, seeds/doses/controls/order, runtime/Python versions, platform
+and report paths. Per-generation manifests retain the resolved template, rendered
+prompt, exact input/output token IDs and effective `GenerationConfig`.
+
+Model assets include safetensors shards, known configuration/tokenizer/vocabulary,
+tiktoken and Jinja files by relative name, size and mtime. Shard-index entries
+are validated and included even when located inside a symlinked directory.
+Hidden files and unreferenced symlink-directory contents are not recursively
+traversed. `--asset-identity sha256` additionally streams content hashes of tracked
+assets; it shares the worker timeout. Metadata mode cannot detect edits that
+preserve size/mtime. Neither mode signs reports or protects against malicious
+local tampering or concurrent asset replacement. A partial resume also compares
+resolved runtime metadata before generating further trials. v1/v2 cannot resume;
+choose new paths and preserve those reports as historical artifacts.
 
 Records require an integer format version and are validated for unique integer
 indices, exact prompt/category,
@@ -235,7 +247,7 @@ A bad checkpoint fails before loading weights.
 Changing a recorded reference is also an identity change, even though references
 never affect generation. Package-version changes require new report paths for earlier results; old files remain preserved.
 
-After each complete pair, a unique temporary JSON file is flushed/fsynced and
+After each complete trial and all requested controls, a unique temporary JSON file is flushed/fsynced and
 atomically replaces the checkpoint. The JSON limit is 128 MiB. Markdown is
 replaced independently with escaped labels and dynamic code fences longer than
 any tilde run in generated content. A crash can leave current JSON and stale
@@ -349,3 +361,53 @@ The request shapes and model/SAE distinctions are based on primary sources:
 
 See [NEURONPEDIA.md](NEURONPEDIA.md) for command examples and
 [ARCHITECTURE.md](ARCHITECTURE.md) for the shorter maintenance overview.
+
+## 12. Correctness evidence and controlled experiments (0.3.0)
+
+Prompt preparation resolves dictionary templates before checking `enable_thinking`.
+It renders the chosen template with `tokenize=False`, then tokenizes with
+`add_special_tokens=False`. Plain formatting keeps tokenizer special tokens.
+System policy supports auto, merge and strict; auto recognizes role rejections
+including real Jinja `TemplateError`, but syntax errors propagate. The manifest
+records the requested/effective role policy, literal template and system message.
+Passing a thinking flag is explicitly not proof of model compliance.
+
+Generation copies the model's `GenerationConfig`, applies the request, and forces
+one beam, one returned sequence and tensor output. Inherited sampling/stop defaults
+are retained and recorded. Inherited minimum new tokens exceeding the requested
+budget are rejected. Configured stop strings receive the tokenizer. The runtime
+validates one returned sequence and preserves both raw decoded text and stripped
+presentation text. Stop reasons are inferred; reaching the token limit always
+sets `possibly_truncated`, even when a forced EOS appears there.
+
+Steering reports distinguish installed from applied. Each hook records call count,
+positions touched on its first and later calls, requested/achieved injection norms
+and combined per-layer perturbation norms. All targets must execute during actual
+generation or the run fails. Every hook is removed in `finally`. Combined vectors
+and perturbed projection output are checked for finiteness. These checks do not
+prove finite logits throughout the whole model or beneficial behavior.
+
+Trials form prompt × seed × dose-scale products (at most 10,000 trials and 100,000
+generations). Main arms alternate order by default; optional control arms follow
+in requested order. Controls use zero vectors, norm-matched seeded random vectors,
+reversed doses, or one-target-at-a-time omission. Random directions use private
+CPU generators, then cast to the projection dtype/device. Matching individual
+vector norms does not force combined multi-target norms to match. Seeds reset
+before each arm; different hardware/library versions may differ.
+
+Optional operator answer keys use exact raw-text or whitespace/casefold matching.
+The primary reference accuracy includes only pairs whose two main outputs did not
+reach the token budget. Its denominator, exclusions, overall paired accuracy delta,
+per-prompt macro delta, seed/dose groups and control comparisons are explicit.
+A deterministic 1,000-replicate bootstrap samples prompt-cluster mean deltas with
+replacement and reports percentile endpoints for at least two clusters. It is
+exploratory, has no multiple-comparison correction, and supplies no semantic
+truth guarantee. Repeated seeds are correlated measurements of the same prompt.
+Keyword/text similarity metrics remain descriptive over all records.
+
+Resume checks exact trial coordinates, answer keys, expected controls/order,
+per-arm execution settings and recomputed scores/metrics. Source or system-policy
+changes invalidate identity even if the package version is unchanged. JSON is
+saved after a full trial; interrupted partial trials rerun all arms. CI exercises
+core Python/platform variants plus actual tiny random Transformers models under
+two library versions, without downloading pretrained weights.

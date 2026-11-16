@@ -11,3 +11,8 @@ The live smoke test uses installed local weights and a zero-dose control target;
 it verifies loading, CLI/worker exchange, calibration and cleanup without claiming
 that a particular nonzero target improves behavior. Unit tests additionally check
 nonzero hook math with synthetic objects and real torch tensors.
+
+`correctness-v0.3.0.json` records the 83-test correctness pass, nine real
+Transformers regressions, a 48-generation tiny-model CLI/resume experiment and
+an installed Qwen zero-dose MPS smoke. Those checks establish execution properties,
+not improved behavior or universal model compatibility.

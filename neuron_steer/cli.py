@@ -69,6 +69,22 @@ def parser():
             default=900,
             help="Total command budget including stdin and child (1–86400 seconds)",
         )
+        p.add_argument(
+            "--system-role", choices=("auto", "merge", "strict"), default="auto"
+        )
+        p.add_argument(
+            "--chat-template",
+            help="Named tokenizer template; default selects its default entry",
+        )
+        p.add_argument(
+            "--calibration", choices=("skip-first", "all"), default="skip-first"
+        )
+        p.add_argument(
+            "--asset-identity",
+            choices=("metadata", "sha256"),
+            default="metadata",
+            help="Optional content hashes for model/tokenizer assets; hashing shares the command timeout",
+        )
         p.add_argument("--dry-run", action="store_true")
         p.add_argument(
             "--reference",
@@ -94,6 +110,24 @@ def parser():
             p.add_argument("--markdown-out")
             p.add_argument("--limit", type=int, default=0)
             p.add_argument("--resume", action="store_true")
+            p.add_argument(
+                "--seeds", help="Comma-separated unique seeds; defaults to --seed"
+            )
+            p.add_argument(
+                "--dose-scales",
+                default="1",
+                help="Comma-separated multipliers; resulting doses must remain ±10",
+            )
+            p.add_argument(
+                "--control",
+                dest="controls",
+                action="append",
+                choices=("zero", "random", "reversed", "ablation"),
+                default=[],
+            )
+            p.add_argument(
+                "--order", choices=("alternate", "baseline-first"), default="alternate"
+            )
     np = commands.add_parser(
         "neuronpedia",
         help="Explicit Neuronpedia API operations; separate from local hooks",
@@ -192,7 +226,16 @@ def main(argv=None):
                 "model_dimensions_validated": False,
             }
             if args.operation == "evaluate" and args.dry_run:
-                preflight["prompts_selected"] = len(evaluation_preflight(job))
+                selected = evaluation_preflight(job)
+                preflight["prompts_selected"] = len(selected)
+                from .experiments import conditions, trials
+
+                planned = trials(selected, job)
+                preflight["trials"] = len(planned)
+                preflight["generations"] = sum(
+                    len(conditions(specs, row["dose_scale"], job["controls"]))
+                    for row in planned
+                )
             if args.dry_run:
                 print(
                     json.dumps(
@@ -202,7 +245,7 @@ def main(argv=None):
                             "job": job,
                             "targets": specs,
                             "preflight": preflight,
-                            "formula": formula(),
+                            "formula": formula(job.get("calibration", "skip-first")),
                             "private_history_accessed": False,
                             "model_loaded": False,
                         },

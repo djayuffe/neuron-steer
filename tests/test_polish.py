@@ -203,7 +203,7 @@ class PolishTests(unittest.TestCase):
                 jobs.run_job(job)
             path = pathlib.Path(job["output"])
             payload = json.loads(path.read_text())
-            payload["version"] = 2.0
+            payload["version"] = 3.0
             path.write_text(json.dumps(payload))
             job["resume"] = True
             with self.assertRaisesRegex(NeuronSteerError, "unsupported checkpoint"):

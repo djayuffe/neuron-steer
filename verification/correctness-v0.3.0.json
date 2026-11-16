@@ -1,0 +1,87 @@
+{
+  "version": "0.3.0",
+  "date": "2026-11-16",
+  "local_suite": {
+    "tests": 83,
+    "failures": 0,
+    "skipped": 0,
+    "python": "3.14.8",
+    "torch": "2.15.0",
+    "transformers": "5.23.0"
+  },
+  "static": {
+    "ruff": "0.17.5",
+    "lint": "passed",
+    "format": "passed",
+    "compileall": "passed"
+  },
+  "package": {
+    "wheel_build": "passed",
+    "isolated_install": "passed",
+    "outside_checkout_dry_run": "passed",
+    "example_trials": 27,
+    "example_generations": 162
+  },
+  "real_transformers_tests": {
+    "model": "tiny random GPT-2, locally created safetensors",
+    "pretrained_downloads": false,
+    "cases": [
+      "single BOS",
+      "single sequence",
+      "forced EOS budget flag",
+      "real projection hook execution and cleanup",
+      "Jinja role fallback and syntax propagation",
+      "named-template thinking",
+      "norm-matched random direction",
+      "inherited minimum token bound",
+      "unused hook failure and cleanup"
+    ]
+  },
+  "cli_experiment": {
+    "model": "tiny random GPT-2",
+    "prompts": 2,
+    "seeds": 2,
+    "dose_scales": 2,
+    "controls": [
+      "zero",
+      "random",
+      "reversed",
+      "ablation"
+    ],
+    "trials": 8,
+    "generations": 48,
+    "resume": "passed",
+    "checkpoint_version": 3,
+    "json_and_markdown": "passed"
+  },
+  "installed_weight_smoke": {
+    "model": "Qwen3.5-4B",
+    "device": "mps",
+    "dtype": "torch.bfloat16",
+    "dose": 0,
+    "input_tokens": 38,
+    "output_tokens": 8,
+    "applied": true,
+    "hook_calls": 8,
+    "weights_downloaded": false,
+    "weights_edited": false,
+    "possibly_truncated": true,
+    "behavior_improvement_claimed": false
+  },
+  "ci": {
+    "workflow": "https://github.com/djayuffe/neuron-steer/actions",
+    "core_jobs": 6,
+    "real_transformers_jobs": 2,
+    "transformers_versions": [
+      "4.40.2",
+      "5.23.0"
+    ],
+    "status": "see linked workflow for commit-specific outcome"
+  },
+  "limits": [
+    "No universal model correctness claim",
+    "No demonstrated behavioral improvement",
+    "Answer-key matching is not semantic truth verification",
+    "v1/v2 checkpoints require fresh report paths"
+  ]
+}

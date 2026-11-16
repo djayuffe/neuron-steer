@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuron-steer"
-version = "0.2.1"
+version = "0.3.0"
 description = "Local Transformers neuron steering, paired evaluation and explicit Neuronpedia research tools"
 readme = "README.md"
 requires-python = ">=3.10"

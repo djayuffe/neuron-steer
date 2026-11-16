@@ -1,6 +1,6 @@
 # neuron-steer
 
-**0.2.1 · Python 3.10+ · macOS/Linux · MIT**
+**0.3.0 · Python 3.10+ · macOS/Linux · MIT**
 
 Explore how temporary changes to a language model's internal computation affect
 its responses. Generate an unhooked baseline, apply explicit MLP projection
@@ -107,6 +107,8 @@ The program runs the prompt once without steering and observes the hidden output
 of each selected decoder block. For the first batch element, it computes the
 median residual-vector norm across prompt positions, excluding position zero when
 there is more than one position. A single-position prompt uses that one position.
+Use `--calibration all` to include every position; the default `skip-first` is a
+positional convention and does not identify whether the first token is BOS.
 
 For a selected projection vector `v` and signed dose `d`:
 
@@ -147,12 +149,19 @@ costs and are recorded separately.
 ### 6. Compare outputs and save reproducible records
 
 Evaluation loads the model once and generates two responses per prompt: unhooked
-baseline, then selected intervention, using the same settings and seed. It records
+baseline and selected intervention, using the same settings and seed. The default
+`--order alternate` swaps their execution order on every second trial; controls
+run afterward. Use `--order baseline-first` for a fixed main-arm order. It records
 complete decoded text, token counts, timing, calibration and descriptive text
 metrics. Seeded equality across hardware/library versions is not promised.
 
-Checkpoints are written after complete pairs. They identify the selected prompts,
-settings, references, package/runtime versions and tracked local model assets.
+Checkpoint **v3** is written after every complete trial, including its controls.
+Its recoverable manifest contains prompts/answer keys, system policy, source
+hashes, references, runtime versions, and local asset identity. Each generation
+also records rendered text, exact token IDs, template and effective decoding
+configuration. Default asset identity uses file size/mtime; use
+`--asset-identity sha256` for content hashes (large weights take time to hash).
+Older v1/v2 reports remain historical documents and cannot resume under v3.
 `--resume` requires an existing compatible checkpoint. Report paths are protected
 from model/input overwrites and competing writers; each report is replaced
 atomically. JSON is the recovery checkpoint if Markdown is stale after a crash.
@@ -253,7 +262,7 @@ neuron-steer evaluate --model /absolute/path/to/model --neuron 0:0:0.25 \
   --output results/example.json --timeout 300 --resume
 ```
 
-Completed pairs are retained; a partial pair is rerun. A completed compatible
+Completed trials are retained; an incomplete trial is rerun with all its controls. A completed compatible
 checkpoint can rebuild Markdown without loading weights. Changed settings,
 references, package/runtime versions or tracked model assets require new report
 paths. Missing or incompatible checkpoints fail rather than starting a fresh run.
@@ -265,7 +274,10 @@ paths. Missing or incompatible checkpoints fail rather than starting a fresh run
 | `mode` | `baseline` for unhooked generation; `steered` for explicit targets, including zero dose. |
 | `content` | Newly generated text, decoded without special tokens and stripped at the edges. |
 | `input_tokens` / `tokens` | Encoded input length / newly generated token count. |
-| `reached_token_budget` | Output met the token budget without ending on a configured EOS ID; inspect for truncation. |
+| `reached_token_budget` / `possibly_truncated` | Output met the token budget, including a forced EOS at the limit. Conservatively excluded from scored complete pairs. |
+| `raw_content` | Decoded output before edge stripping; used for answer-key scoring. |
+| `manifest` | Exact input/token IDs, prompt policy and effective generation configuration. |
+| `steering.applied` | All requested hooks actually executed; installation alone is insufficient. |
 | `steering.neurons` | Per-target calibration, vector norm and scale for an intervention; baseline steering is `null`. |
 | `runtime` | Loaded model path, device and runtime versions. |
 | `neuronpedia_references` | Research annotations, never automatically fetched or converted into targets. |
@@ -273,6 +285,51 @@ paths. Missing or incompatible checkpoints fail rather than starting a fresh run
 Evaluation summaries also show changed responses, text similarity, length and
 keyword counts. These describe the outputs; read the actual text before drawing
 conclusions. They do not establish quality, safety, factuality or causality.
+
+### G. Repeated seeds, dose sweeps and answer keys
+
+ELI5: compare the same questions with the steering switch off and on. Repeat the
+comparison, try several strengths, and add controls to see whether any improvement
+is specific to your chosen direction. An answer key checks stated answers; it
+does not prove general truthfulness.
+
+```sh
+neuron-steer evaluate --model /absolute/path/to/model --neuron 0:0:0.25 \
+  --prompts examples/answer-key-prompts.json --max-tokens 64 \
+  --temperature 0.7 --seeds 0,1,2 --dose-scales 0,0.5,1 \
+  --control zero --control random --control reversed --control ablation \
+  --asset-identity sha256 --output results/controlled.json --timeout 3600
+```
+
+This plans 27 trials (3 prompts × 3 seeds × 3 strengths). With one target,
+each trial has baseline, steered, zero, random, reversed and leave-one-target-out
+arms: 162 generations. Add `--dry-run` to inspect the plan without loading weights.
+Choose an actual supported coordinate for your model. Seeds mainly vary sampled
+outputs; repeating greedy generation does not create independent evidence.
+
+- `zero`: same hook path with zero dose.
+- `random`: deterministic random directions matched to each target's injection norm.
+- `reversed`: negate every selected dose.
+- `ablation`: leave out each target in turn; one target reduces to an unhooked arm.
+
+A prompt may include `"answers": ["4"]` and `"match": "normalized"` (default)
+or `"exact"`. Normalized matching collapses whitespace and casefolds; exact
+matching compares the unstripped decoded text. Neither uses substring matching
+or an AI judge. Budget-limited pairs are excluded from primary answer-key scores.
+Reports show complete/truncated counts, scores by seed and dose, control
+comparisons, and a 1,000-replicate prompt-cluster bootstrap interval when at least
+two scored prompt clusters exist. Small or selected datasets can still mislead.
+
+### H. Select prompt policy explicitly
+
+Chat templates are rendered once, then tokenized with `add_special_tokens=False`
+to prevent duplicate BOS tokens. Plain-text fallback uses tokenizer special tokens.
+`--system-role auto` retries with the system instruction merged into the user
+message only for recognized role-rejection errors; `strict` propagates those
+errors and `merge` selects the merged form directly. `--chat-template NAME`
+selects a named tokenizer template. The resolved template controls whether
+`enable_thinking` is passed; reports distinguish requesting this option from
+verifying that a model actually follows it.
 
 ## Neuronpedia
 

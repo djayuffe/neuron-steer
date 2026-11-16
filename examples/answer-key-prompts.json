@@ -1,0 +1,26 @@
+[
+  {
+    "category": "arithmetic",
+    "prompt": "What is 2 + 2? Reply with only the integer.",
+    "answers": [
+      "4"
+    ],
+    "match": "normalized"
+  },
+  {
+    "category": "arithmetic",
+    "prompt": "What is 3 * 5? Reply with only the integer.",
+    "answers": [
+      "15"
+    ],
+    "match": "normalized"
+  },
+  {
+    "category": "arithmetic",
+    "prompt": "What is 12 - 3? Reply with only the integer.",
+    "answers": [
+      "9"
+    ],
+    "match": "normalized"
+  }
+]

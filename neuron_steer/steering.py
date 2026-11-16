@@ -40,10 +40,15 @@ class ModelContextOverflow(NeuronSteerError):
     """The prompt plus completion budget exceeds the model context bound."""
 
 
-def formula() -> str:
+def formula(calibration="skip-first") -> str:
     """Return the human-readable steering formula."""
+    positions = (
+        "all prompt tokens"
+        if calibration == "all"
+        else "prompt tokens 1..end (or token 0 for a one-token prompt)"
+    )
     return (
-        "For each target: add dose * median(||residual leaving layer L||, prompt tokens 1..end) "
+        f"For each target: add dose * median(||residual leaving layer L||, {positions}) "
         "/ ||W_down[L][:, N]|| * W_down[L][:, N] to the down_proj output at every token."
     )
 
@@ -150,15 +155,30 @@ def transformer_down_proj(block: Any) -> Any:
     raise NeuronSteerError("model block has no supported down_proj weight")
 
 
-def install_steering(model: Any, encoded: Any, specs: list[dict[str, Any]], torch: Any):
+def install_steering(
+    model: Any,
+    encoded: Any,
+    specs: list[dict[str, Any]],
+    torch: Any,
+    *,
+    calibration="skip-first",
+    control="target",
+    control_seed=0,
+):
     """Calibrate and install temporary ``down_proj`` hooks.
 
     Returns ``(steering_result, handles)``. The caller must remove every handle
     when generation finishes. The returned result confirms that the hooks were
     applied and reports the per-target calibration values.
     """
+    if calibration not in ("skip-first", "all"):
+        raise NeuronSteerError("calibration must be skip-first or all")
+    if control not in ("target", "random"):
+        raise NeuronSteerError("unknown intervention control")
     blocks = transformer_blocks(model)
+    calibration_policy = calibration
     calibration: dict[int, float] = {}
+    calibration_counts = {}
     handles: list[Any] = []
 
     def make_calibration_hook(layer: int):
@@ -168,9 +188,23 @@ def install_steering(model: Any, encoded: Any, specs: list[dict[str, Any]], torc
                 raise NeuronSteerError(
                     "unexpected decoder output shape during steering calibration"
                 )
-            tokens = hidden[0, 1:, :] if hidden.shape[1] > 1 else hidden[0]
+            tokens = (
+                hidden[0, 1:, :]
+                if calibration_policy == "skip-first" and hidden.shape[1] > 1
+                else hidden[0]
+            )
             norms = torch.linalg.vector_norm(tokens.float(), dim=-1)
             calibration[layer] = float(torch.median(norms).item())
+            calibration_counts[layer] = {
+                "batch_element": 0,
+                "positions_used": hidden.shape[1]
+                - (
+                    1
+                    if calibration_policy == "skip-first" and hidden.shape[1] > 1
+                    else 0
+                ),
+                "policy": calibration_policy,
+            }
 
         return hook
 
@@ -188,6 +222,18 @@ def install_steering(model: Any, encoded: Any, specs: list[dict[str, Any]], torc
             handle.remove()
 
     plans: list[dict[str, Any]] = []
+    report = {
+        "installed": False,
+        "applied": False,
+        "method": "down_proj_add",
+        "calibration": calibration_policy,
+        "control": control,
+        "calibration_counts": calibration_counts,
+        "neurons": plans,
+        "layers": [],
+    }
+    vectors_by_layer = {}
+
     steering_handles: list[Any] = []
     try:
         for spec in specs:
@@ -198,9 +244,11 @@ def install_steering(model: Any, encoded: Any, specs: list[dict[str, Any]], torc
                 raise NeuronSteerError(
                     "neuron steering requires a 2-D down_proj weight (not quantized)"
                 )
-            if hasattr(down, "nx") and hasattr(down, "nf"):
+            if (hasattr(down, "nx") and hasattr(down, "nf")) or (
+                type(down).__name__ == "Conv1D" and hasattr(down, "nf")
+            ):
                 # GPT-2 Conv1D stores weights as (input, output); select a row.
-                input_dim = int(down.nx)
+                input_dim = int(getattr(down, "nx", weight.shape[0]))
                 if weight.shape[0] != input_dim:
                     raise NeuronSteerError("unsupported down_proj weight orientation")
                 if not 0 <= neuron < input_dim:
@@ -243,37 +291,86 @@ def install_steering(model: Any, encoded: Any, specs: list[dict[str, Any]], torc
             ):
                 raise NeuronSteerError("steering vector overflows the projection dtype")
 
-            def hook(module, inputs, output, vector=vector):
-                if isinstance(output, tuple):
-                    hidden = output[0]
-                    return (
-                        hidden + vector.to(dtype=hidden.dtype, device=hidden.device),
-                        *output[1:],
+            if control == "random":
+                if not hasattr(torch, "Generator"):
+                    raise NeuronSteerError(
+                        "random controls require a real tensor runtime"
                     )
-                return output + vector.to(dtype=output.dtype, device=output.device)
+                generator = torch.Generator(device="cpu").manual_seed(
+                    int(control_seed) + layer * 1000003 + neuron
+                )
+                direction = torch.randn(
+                    tuple(column.shape), generator=generator, dtype=torch.float32
+                ).to(column.device)
+                direction_norm = torch.linalg.vector_norm(direction).item()
+                if not math.isfinite(direction_norm) or direction_norm <= 0:
+                    raise NeuronSteerError("invalid random control direction")
+                vector = (direction * (dose * median_norm / direction_norm)).to(
+                    dtype=column.dtype
+                )
+                if not bool(torch.isfinite(vector).all().item()):
+                    raise NeuronSteerError("random control overflows projection dtype")
+            achieved = float(torch.linalg.vector_norm(vector.float()).item())
+            plan = {
+                "layer": layer,
+                "neuron": neuron,
+                "dose": dose,
+                "median_residual_norm": median_norm,
+                "down_proj_column_norm": column_norm,
+                "scale": scale if control == "target" else None,
+                "requested_injection_norm": abs(dose) * median_norm,
+                "achieved_injection_norm": achieved,
+                "calls": 0,
+                "positions_touched": 0,
+                "first_call_positions": 0,
+                "later_call_positions": 0,
+            }
+            plans.append(plan)
+            vectors_by_layer.setdefault(layer, []).append(vector)
+
+            def hook(module, inputs, output, vector=vector, plan=plan):
+                hidden = output[0] if isinstance(output, tuple) else output
+                if getattr(hidden, "ndim", 0) != 3:
+                    raise NeuronSteerError("unexpected projection output shape")
+                added = hidden + vector.to(dtype=hidden.dtype, device=hidden.device)
+                if hasattr(torch, "isfinite") and not bool(
+                    torch.isfinite(added).all().item()
+                ):
+                    raise NeuronSteerError("non-finite steered projection output")
+                positions = int(hidden.shape[0] * hidden.shape[1])
+                plan[
+                    "first_call_positions"
+                    if plan["calls"] == 0
+                    else "later_call_positions"
+                ] += positions
+                plan["positions_touched"] += positions
+                plan["calls"] += 1
+                report["applied"] = all(p["calls"] > 0 for p in plans)
+                return (added, *output[1:]) if isinstance(output, tuple) else added
 
             steering_handles.append(down.register_forward_hook(hook))
-            plans.append(
-                {
-                    "layer": layer,
-                    "neuron": neuron,
-                    "dose": dose,
-                    "median_residual_norm": median_norm,
-                    "down_proj_column_norm": column_norm,
-                    "scale": scale,
-                }
-            )
+        if hasattr(torch, "stack"):
+            for layer, vectors in vectors_by_layer.items():
+                combined = torch.stack([v.float() for v in vectors]).sum(dim=0)
+                cast = combined.to(dtype=vectors[0].dtype)
+                if not bool(torch.isfinite(cast).all().item()):
+                    raise NeuronSteerError(
+                        "combined intervention overflows projection dtype"
+                    )
+                norm = float(torch.linalg.vector_norm(cast.float()).item())
+                report["layers"].append(
+                    {
+                        "layer": layer,
+                        "combined_injection_norm": norm,
+                        "combined_to_residual_ratio": norm / calibration[layer]
+                        if calibration[layer]
+                        else 0.0,
+                    }
+                )
     except Exception:
         for handle in steering_handles:
             handle.remove()
         raise
 
-    return (
-        {
-            "applied": True,
-            "method": "down_proj_add",
-            "calibration": "prompt_tokens_1_onward",
-            "neurons": plans,
-        },
-        steering_handles,
-    )
+    report["installed"] = True
+    return report, steering_handles

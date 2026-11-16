@@ -65,9 +65,14 @@ class FakeTensor:
             return FakeTensor(
                 (1, self.shape[1] - 1, self.shape[2]), self.value, self.norm
             )
+        if key == 0 and len(self.shape) == 2:
+            return FakeTensor((self.shape[1],), self.value, self.norm)
         if key == 0:
             return FakeTensor((self.shape[1], self.shape[2]), self.value, self.norm)
         raise IndexError(key)
+
+    def tolist(self):
+        return list(range(self.shape[0]))
 
     def __add__(self, other):
         result = FakeTensor(
@@ -148,6 +153,10 @@ class FakeModel:
         return self
 
     def generate(self, **kwargs):
+        for block in self.model.layers:
+            for hook in block.mlp.down_proj.hooks:
+                if not hook.removed:
+                    hook.function(block.mlp.down_proj, (), FakeTensor((1, 1, 4)))
         return [[1, 2, 3, 4]]
 
     def __call__(self, **encoded):

@@ -1,17 +1,16 @@
 """Generation and checkpointed paired evaluation, independent of CallAI."""
 
 import contextlib
+import copy
 import fcntl
 import hashlib
-import importlib.metadata
-import json
 import math
 import os
 import pathlib
 import sys
 
-from . import __version__
 from .evaluation import load_prompts, markdown, metric_row, summarize
+from .experiments import conditions, match_answer, normalize_experiment, trials
 from .neuronpedia import normalize_references
 from .runtime import LocalRuntime
 from .steering import (
@@ -78,68 +77,27 @@ def validate_job(job, *, require_prompt=True):
             raise NeuronSteerError(
                 "evaluation requires paths and a boolean resume setting"
             )
+    if job.get("system_role", "auto") not in ("auto", "merge", "strict") or job.get(
+        "calibration", "skip-first"
+    ) not in ("skip-first", "all"):
+        raise NeuronSteerError("invalid system-role or calibration policy")
+    if job.get("chat_template") is not None and (
+        not isinstance(job["chat_template"], str)
+        or not job["chat_template"]
+        or len(job["chat_template"]) > 200
+    ):
+        raise NeuronSteerError("invalid chat template name")
+    if job.get("asset_identity", "metadata") not in ("metadata", "sha256"):
+        raise NeuronSteerError("asset identity must be metadata or sha256")
+    if job["operation"] == "evaluate":
+        normalize_experiment(job, specs)
     return specs
 
 
 def checkpoint_identity(job, prompts):
-    model = pathlib.Path(job["model"]).expanduser().resolve()
-    # Detect replaced local weights/configs without reading gigabytes of tensor data.
-    files = []
-    asset_names = {
-        "config.json",
-        "generation_config.json",
-        "tokenizer.json",
-        "tokenizer_config.json",
-        "special_tokens_map.json",
-        "added_tokens.json",
-        "vocab.json",
-        "vocab.txt",
-        "merges.txt",
-        "tokenizer.model",
-        "spiece.model",
-        "sentencepiece.bpe.model",
-    }
-    for file in sorted(model.rglob("*")):
-        relative = file.relative_to(model)
-        if any(part.startswith(".") for part in relative.parts):
-            continue
-        if file.is_file() and (
-            file.suffix in (".safetensors", ".tiktoken")
-            or file.name in asset_names
-            or file.name.endswith(".safetensors.index.json")
-        ):
-            stat = file.stat()
-            files.append((relative.as_posix(), stat.st_size, stat.st_mtime_ns))
-    identity = {
-        k: job[k]
-        for k in (
-            "model",
-            "neurons",
-            "max_tokens",
-            "temperature",
-            "seed",
-            "context_size",
-            "device",
-            "no_thinking",
-        )
-    }
-    versions = {}
-    for name in ("torch", "transformers", "safetensors"):
-        try:
-            versions[name] = importlib.metadata.version(name)
-        except importlib.metadata.PackageNotFoundError:
-            versions[name] = "not-installed"
-    identity.update(
-        references=normalize_references(job.get("references", [])),
-        prompts=prompts,
-        model_files=files,
-        format_version=2,
-        package_version=__version__,
-        runtime_versions=versions,
-        python=sys.version.split()[0],
-        markdown_out=str(pathlib.Path(job["markdown_out"]).resolve()),
-    )
-    return hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
+    from .provenance import digest, manifest
+
+    return digest(manifest(job, prompts))
 
 
 def run_job(job):
@@ -153,12 +111,16 @@ def run_job(job):
         for key in ("output", "markdown_out"):
             job[key] = str(pathlib.Path(job[key]).expanduser().absolute())
         return evaluate(job, specs)
+    from .provenance import manifest
+
+    experiment = manifest(job)
     runtime = LocalRuntime(model, job["device"])
     result = runtime.generate(job["prompt"], specs, **generation_options(job))
     return {
         "operation": "generate",
         "mode": "baseline" if job.get("baseline", False) else "steered",
         "runtime": runtime.info,
+        "experiment_manifest": experiment,
         "neuronpedia_references": job["references"],
         "references_are_annotations": True,
         **result,
@@ -168,7 +130,17 @@ def run_job(job):
 def generation_options(job):
     return {
         key: job[key]
-        for key in ("max_tokens", "temperature", "context_size", "seed", "no_thinking")
+        for key in (
+            "max_tokens",
+            "temperature",
+            "context_size",
+            "seed",
+            "no_thinking",
+            "system_role",
+            "chat_template",
+            "calibration",
+        )
+        if key in job
     }
 
 
@@ -237,7 +209,7 @@ def evaluate(job, specs):
         return evaluate_locked(job, specs)
 
 
-def validate_records(records, prompts, maximum):
+def validate_records(records, prompts, maximum, job=None, specs=None):
     if not isinstance(records, list):
         raise NeuronSteerError("checkpoint records must be a list")
     seen = set()
@@ -246,11 +218,46 @@ def validate_records(records, prompts, maximum):
         if type(index) is not int or index in seen or not 1 <= index <= len(prompts):
             raise NeuronSteerError("invalid or duplicate checkpoint record")
         if any(
-            row.get(key) != prompts[index - 1][key] for key in ("prompt", "category")
+            row.get(key) != prompts[index - 1].get(key)
+            for key in (
+                "prompt",
+                "category",
+                "prompt_index",
+                "seed",
+                "dose_scale",
+                "answers",
+                "match",
+            )
         ):
             raise NeuronSteerError("checkpoint prompt/category mismatch")
-        for side in ("baseline", "steered"):
-            result = row.get(side)
+        control_results = row.get("controls", {})
+        if not isinstance(control_results, dict):
+            raise NeuronSteerError("invalid checkpoint controls")
+        if job is not None:
+            expected = set(
+                conditions(
+                    specs, prompts[index - 1]["dose_scale"], job.get("controls", [])
+                )
+            ) - {"baseline", "steered"}
+            if set(control_results) != expected:
+                raise NeuronSteerError("checkpoint control set mismatch")
+            expected_order = list(
+                conditions(
+                    specs, prompts[index - 1]["dose_scale"], job.get("controls", [])
+                )
+            )
+            if job.get("order", "alternate") == "alternate" and index % 2 == 0:
+                expected_order[0], expected_order[1] = (
+                    expected_order[1],
+                    expected_order[0],
+                )
+            if row.get("execution_order") != expected_order:
+                raise NeuronSteerError("invalid checkpoint execution order")
+        for side, result in [
+            ("baseline", row.get("baseline")),
+            ("steered", row.get("steered")),
+            *control_results.items(),
+        ]:
             if (
                 not isinstance(result, dict)
                 or not isinstance(result.get("content"), str)
@@ -271,6 +278,50 @@ def validate_records(records, prompts, maximum):
                 and type(result["reached_token_budget"]) is not bool
             ):
                 raise NeuronSteerError("invalid checkpoint token budget flag")
+            if "raw_content" in result and (
+                not isinstance(result["raw_content"], str)
+                or result["raw_content"].strip() != result["content"]
+            ):
+                raise NeuronSteerError("invalid checkpoint raw content")
+            for flag in (
+                "possibly_truncated",
+                "ended_with_eos",
+                "stop_reason_is_inferred",
+            ):
+                if flag in result and type(result[flag]) is not bool:
+                    raise NeuronSteerError("invalid checkpoint generation flag")
+            if job is not None:
+                arm_map = conditions(
+                    specs, prompts[index - 1]["dose_scale"], job.get("controls", [])
+                )
+                arm_specs, control = arm_map[side]
+                options = {
+                    **generation_options(job),
+                    "seed": prompts[index - 1]["seed"],
+                }
+                if control == "random":
+                    options.update(
+                        control="random", control_seed=prompts[index - 1]["seed"]
+                    )
+                expected_execution = {
+                    "prompt": prompts[index - 1]["prompt"],
+                    "seed": prompts[index - 1]["seed"],
+                    "dose_scale": prompts[index - 1]["dose_scale"],
+                    "targets": arm_specs,
+                    "control": control,
+                    "condition": side,
+                    "generation_options": options,
+                }
+                if result.get("execution") != expected_execution:
+                    raise NeuronSteerError(
+                        "checkpoint execution settings do not match the trial"
+                    )
+            if result.get("reference_match") != match_answer(
+                result.get("raw_content", result["content"]), prompts[index - 1]
+            ):
+                raise NeuronSteerError(
+                    "checkpoint reference score does not match answer key"
+                )
             elapsed = result.get("elapsed_seconds")
             if (
                 type(elapsed) not in (int, float)
@@ -292,14 +343,26 @@ def evaluation_preflight(job):
             raise NeuronSteerError("--limit exceeds the prompt count")
         prompts = prompts[: job["limit"]]
     validate_output_paths(job)
+    trial_rows = trials(prompts, job)
+    specs = parse_specs(job["neurons"])
+    planned = sum(
+        len(conditions(specs, row["dose_scale"], job.get("controls", [])))
+        for row in trial_rows
+    )
+    if planned > 100000:
+        raise NeuronSteerError("experiment exceeds 100000 generations")
     return prompts
 
 
 def evaluate_locked(job, specs):
     prompts = evaluation_preflight(job)
+    trial_rows = trials(prompts, job)
     output = pathlib.Path(job["output"])
     md_out = pathlib.Path(job["markdown_out"])
-    fingerprint = checkpoint_identity(job, prompts)
+    from .provenance import digest, manifest
+
+    experiment = manifest(job, prompts)
+    fingerprint = digest(experiment)
     records = []
     if output.exists():
         if not job["resume"]:
@@ -310,28 +373,35 @@ def evaluate_locked(job, specs):
         if (
             not isinstance(existing, dict)
             or type(existing.get("version")) is not int
-            or existing.get("version") != 2
+            or existing.get("version") != 3
         ):
             raise NeuronSteerError(
-                "unsupported checkpoint format; start a new v2 report"
+                "unsupported checkpoint format; start a new v3 report"
             )
         if existing.get("fingerprint") != fingerprint:
             raise NeuronSteerError(
                 "resume settings, model files or prompts differ from the checkpoint"
             )
+        if existing.get("experiment_manifest") != experiment:
+            raise NeuronSteerError(
+                "checkpoint manifest does not match the current experiment"
+            )
         records = existing.get("records")
-        validate_records(records, prompts, job["max_tokens"])
+        validate_records(records, trial_rows, job["max_tokens"], job, specs)
         if not isinstance(existing.get("runtime"), dict):
             raise NeuronSteerError("checkpoint runtime must be an object")
     done = {row["index"] for row in records}
     runtime = (
-        LocalRuntime(job["model"], job["device"]) if len(done) < len(prompts) else None
+        LocalRuntime(job["model"], job["device"])
+        if len(done) < len(trial_rows)
+        else None
     )
     if records and runtime is not None and existing["runtime"] != runtime.info:
         raise NeuronSteerError("resolved runtime differs from the checkpoint")
     payload = {
-        "version": 2,
+        "version": 3,
         "fingerprint": fingerprint,
+        "experiment_manifest": experiment,
         "model": job["model"],
         "targets": job["neurons"],
         "neuronpedia_references": job["references"],
@@ -342,26 +412,52 @@ def evaluate_locked(job, specs):
         "hosted_text_submitted": False,
         "records": records,
     }
-    for row in prompts:
+    for row in trial_rows:
         if row["index"] in done:
             continue
         print(
-            f"[{row['index']}/{len(prompts)}] {row['category']}",
+            f"[{row['index']}/{len(trial_rows)}] prompt={row['prompt_index']} seed={row['seed']} dose_scale={row['dose_scale']}",
             file=sys.stderr,
             flush=True,
         )
-        before = runtime.generate(row["prompt"], [], **generation_options(job))
-        after = runtime.generate(row["prompt"], specs, **generation_options(job))
-        records.append(
-            {
-                **row,
-                "baseline": before,
-                "steered": after,
-                "metrics": metric_row(before["content"], after["content"]),
+        arms = conditions(specs, row["dose_scale"], job.get("controls", []))
+        names = list(arms)
+        if job.get("order", "alternate") == "alternate" and row["index"] % 2 == 0:
+            names[0], names[1] = names[1], names[0]
+        outputs = {}
+        for name in names:
+            arm_specs, control = arms[name]
+            options = {**generation_options(job), "seed": row["seed"]}
+            if control == "random":
+                options.update(control="random", control_seed=row["seed"])
+            outputs[name] = copy.deepcopy(
+                runtime.generate(row["prompt"], arm_specs, **options)
+            )
+            outputs[name]["execution"] = {
+                "prompt": row["prompt"],
+                "seed": row["seed"],
+                "dose_scale": row["dose_scale"],
+                "targets": arm_specs,
+                "control": control,
+                "condition": name,
+                "generation_options": options,
             }
+            outputs[name]["reference_match"] = match_answer(
+                outputs[name].get("raw_content", outputs[name]["content"]), row
+            )
+        record = {
+            **row,
+            "execution_order": names,
+            "baseline": outputs.pop("baseline"),
+            "steered": outputs.pop("steered"),
+            "controls": outputs,
+        }
+        record["metrics"] = metric_row(
+            record["baseline"]["content"], record["steered"]["content"]
         )
+        records.append(record)
         records.sort(key=lambda r: r["index"])
-        payload["summary"] = summarize(records)
+        payload["summary"] = summarize(records, uncertainty=False)
         write_json(output, payload)
     payload["summary"] = summarize(records)
     write_json(output, payload)

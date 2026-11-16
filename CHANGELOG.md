@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0 — 2026-11-16
+
+Fix duplicate chat BOS tokens, real Jinja role rejection, named-template thinking
+flags and false hook-application claims. Add full prompt/config/source manifests,
+optional model asset SHA256, explicit calibration policy and conservative token
+budget accounting. Force one returned sequence and reject incompatible minimum
+completion budgets. Add seeds, dose sweeps, alternating order, zero/random/reversed/
+leave-one-out controls, answer-key scoring and prompt-cluster bootstrap intervals.
+Add real offline Transformers regression jobs alongside the core platform matrix.
+
+Checkpoint format is **v3**. v1/v2 cannot resume; start fresh report paths.
+Existing historical reports remain readable. No weights are downloaded or edited.
+
 ## 0.2.1 — 2026-11-15
 
 Add explicit unhooked `generate --baseline` and distinguish it from zero-dose
