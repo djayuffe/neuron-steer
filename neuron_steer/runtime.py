@@ -133,6 +133,14 @@ def json_digest(value):
     ).hexdigest()
 
 
+def snapshot_inputs(encoded):
+    """Capture every tokenizer tensor, preserving values, shape and dtype."""
+    return {
+        key: {"dtype": str(tensor.dtype), "values": tensor.tolist()}
+        for key, tensor in encoded.items()
+    }
+
+
 class LocalRuntime:
     def __init__(self, model_path, device="auto"):
         path = pathlib.Path(model_path).expanduser().resolve()
@@ -236,6 +244,7 @@ class LocalRuntime:
             if hasattr(encoded["input_ids"][0], "tolist")
             else None
         )
+        model_inputs = snapshot_inputs(encoded)
         encoded = {k: v.to(self.device) for k, v in encoded.items()}
         options = {
             "max_new_tokens": max_tokens,
@@ -309,6 +318,8 @@ class LocalRuntime:
                 "rendered_prompt": prompt,
                 "formatting": formatting,
                 "input_token_ids": input_ids,
+                "model_inputs": model_inputs,
+                "model_inputs_sha256": json_digest(model_inputs),
                 "input_token_sha256": json_digest(input_ids)
                 if input_ids is not None
                 else None,

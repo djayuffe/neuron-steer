@@ -78,6 +78,11 @@ class TransformersIntegrationTests(unittest.TestCase):
             runtime = self.runtime(directory)
             output = runtime.generate("hello", [], max_tokens=3)
             self.assertEqual(output["manifest"]["input_token_ids"].count(1), 1)
+            self.assertIn("attention_mask", output["manifest"]["model_inputs"])
+            self.assertEqual(
+                output["manifest"]["model_inputs"]["input_ids"]["values"][0],
+                output["manifest"]["input_token_ids"],
+            )
             self.assertFalse(output["manifest"]["formatting"]["add_special_tokens"])
             self.assertEqual(
                 output["manifest"]["generation_config"]["num_return_sequences"], 1

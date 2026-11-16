@@ -8,6 +8,7 @@ Earlier correctness fixes remain documented in [0.3.0](docs/history/audit-v0.3.0
 | Users had to guess projection coordinates. | Static/loaded inspection reports supported layers, dimensions and orientation. |
 | No evidence-based way to prioritize native neuron hypotheses. | Bounded prompt activation profiles and optional category contrasts rank projection contributions. |
 | Separate tools could interpret GPT-2 coordinates differently. | Inspection, probing and interventions share projection-layout validation. |
+| Token-only replay omitted attention masks and token types. | Generation/probe manifests preserve every tokenizer input tensor, dtype and hash; the independent forward check replays all inputs. |
 | Candidate scores could be mistaken for behavioral improvement. | Explicit observational labels, recoverable formulas/counts and controlled held-out validation examples. |
 | New workflows could omit research context or provenance. | Probe references remain annotations; complete prompt/source/model manifests accompany candidates. |
 

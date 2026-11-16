@@ -3,7 +3,8 @@
 ## 0.4.0 — 2026-11-16
 
 Add static and loaded model inspection, external chat-template discovery and
-observational activation probing. Rank native MLP coordinates by contribution
+observational activation probing. Preserve all tokenizer model-input tensors,
+including masks and token types, for faithful replay across runtimes. Rank native MLP coordinates by contribution
 norm or signed category contrast, with explicit token-position policies, prompt
 weighting, bounded work and full provenance. Share projection-layout validation
 with steering. Preserve Neuronpedia annotations without automatic SAE mapping.

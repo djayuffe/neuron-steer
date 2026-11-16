@@ -30,7 +30,8 @@
     "context/layer bounds",
     "empty rendered input",
     "failed/bypassed forward cleanup",
-    "recoverable manifests and offline references"
+    "recoverable manifests and offline references",
+    "complete tokenizer model-input values/dtypes/hashes and faithful independent replay"
   ],
   "cli_smoke": {
     "model": "tiny random GPT-2, locally created safetensors",
@@ -73,5 +74,6 @@
     "Separate discovery and held-out validation data",
     "Existing dense Transformers layouts only; no automatic SAE mapping",
     "Changed package/source identity invalidates old resume"
-  ]
+  ],
+  "compatibility_correction": "Independent reference forward now replays all tokenizer inputs, including token_type_ids and attention_mask; generation and probe manifests retain these tensors."
 }

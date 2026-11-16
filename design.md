@@ -466,7 +466,8 @@ Bias contributions, cross-neuron interactions, token-specific maxima and uncerta
 of these observational ranks are not modeled.
 
 Probe manifests include source/asset/runtime identity, exact prompts/renderings,
-input IDs, position counts, layers, ranking policy and category choices. Optional
+input IDs, complete model-input tensor values/dtypes/hashes (including attention
+masks and token types), position counts, layers, ranking policy and category choices. Optional
 Neuronpedia references are preserved annotations and never fetched locally. The
 resulting native coordinates can be passed explicitly to existing generate/evaluate
 jobs with an operator-selected dose. A positive activation contrast does not prove

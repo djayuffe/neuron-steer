@@ -6,7 +6,7 @@ import pathlib
 from .evaluation import load_prompts
 from .neuronpedia import normalize_references
 from .provenance import digest, manifest, source_identity
-from .runtime import LocalRuntime, json_digest, prepare_chat_prompt
+from .runtime import LocalRuntime, json_digest, prepare_chat_prompt, snapshot_inputs
 from .steering import (
     NeuronSteerError,
     projection_info,
@@ -231,6 +231,7 @@ def probe_runtime(runtime, job, rows):
                 "probe input exceeds token/context bound; input is never silently truncated"
             )
         token_ids = encoded["input_ids"][0].tolist()
+        model_inputs = snapshot_inputs(encoded)
         seen, handles = {}, []
         try:
             for layer in layers:
@@ -299,6 +300,8 @@ def probe_runtime(runtime, job, rows):
                 "rendered_prompt": rendered,
                 "formatting": formatting,
                 "input_token_ids": token_ids,
+                "model_inputs": model_inputs,
+                "model_inputs_sha256": json_digest(model_inputs),
                 "input_token_sha256": json_digest(token_ids),
             }
         )

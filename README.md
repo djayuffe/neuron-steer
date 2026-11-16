@@ -361,7 +361,7 @@ It finds named templates in tokenizer configuration and external Jinja files.
 `probe` observes the actual inputs to the selected MLP output projections,
 including GPT-2's transposed Conv1D layout. It returns native `layer:neuron`
 coordinates, signed/absolute activation means, projection norms, category means,
-ranking scores, exact prompt/token manifests and research annotations.
+ranking scores, exact prompt/token/model-input manifests and research annotations.
 
 Without category options, score = mean absolute activation × projection-vector
 norm. With `--positive`/`--negative`, score = absolute difference of the categories'

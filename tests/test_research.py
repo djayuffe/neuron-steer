@@ -208,7 +208,15 @@ class RealProbeTests(unittest.TestCase):
                 for row in result["records"]:
                     with torch.inference_mode():
                         runtime.model(
-                            input_ids=torch.tensor([row["input_token_ids"]]),
+                            **{
+                                key: torch.tensor(
+                                    entry["values"],
+                                    dtype=getattr(
+                                        torch, entry["dtype"].removeprefix("torch.")
+                                    ),
+                                )
+                                for key, entry in row["model_inputs"].items()
+                            },
                             use_cache=False,
                         )
             finally:
