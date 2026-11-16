@@ -190,7 +190,9 @@ not a universal explanation of every model-specific stopping rule.
 Every installed steering handle is removed in a `finally` block. A generation
 exception therefore cannot leave hooks on a runtime reused for the next prompt.
 The CLI's process wrapper also terminates the worker process group on timeout or
-cancellation. In-memory weights disappear with the worker; weight files remain
+cancellation. If group signaling returns permission denied, cleanup falls back to
+signaling the owned child; reaping is bounded to one second and pipes close even
+if termination fails. An unkillable process produces a cleanup error. In-memory weights disappear with the worker; weight files remain
 unchanged. Direct Python users own their process lifetime.
 
 ## 7. Paired evaluation and descriptive metrics

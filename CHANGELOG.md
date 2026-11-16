@@ -9,6 +9,8 @@ budget accounting. Force one returned sequence and reject incompatible minimum
 completion budgets. Add seeds, dose sweeps, alternating order, zero/random/reversed/
 leave-one-out controls, answer-key scoring and prompt-cluster bootstrap intervals.
 Add real offline Transformers regression jobs alongside the core platform matrix.
+Handle macOS process-group permission races with direct-child termination, a
+bounded cleanup wait and unconditional pipe closure.
 
 Checkpoint format is **v3**. v1/v2 cannot resume; start fresh report paths.
 Existing historical reports remain readable. No weights are downloaded or edited.

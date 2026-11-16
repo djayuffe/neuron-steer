@@ -105,6 +105,22 @@ class JobsTests(unittest.TestCase):
         )
         self.assertEqual(result.stdout.strip(), "synthetic")
 
+    def test_process_group_permission_error_preserves_output_limit(self):
+        with mock.patch("neuron_steer.process.os.killpg", side_effect=PermissionError):
+            with self.assertRaisesRegex(NeuronSteerError, "stdout exceeded"):
+                bounded_run(
+                    [sys.executable, "-c", 'print("x"*10000)'], max_bytes=100, timeout=5
+                )
+
+    def test_process_group_permission_error_uses_child_kill_on_timeout(self):
+        with mock.patch("neuron_steer.process.os.killpg", side_effect=PermissionError):
+            with self.assertRaises(subprocess.TimeoutExpired):
+                bounded_run(
+                    [sys.executable, "-c", "import time;time.sleep(10)"], timeout=0.05
+                )
+            result = bounded_run([sys.executable, "-c", 'print("done")'], timeout=5)
+            self.assertEqual(result.stdout.strip(), "done")
+
     def test_paired_evaluation_and_resume_identity(self):
         with tempfile.TemporaryDirectory() as directory:
             job = self.job(directory)

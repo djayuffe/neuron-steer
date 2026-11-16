@@ -67,12 +67,27 @@ def bounded_run(cmd, *, input=None, timeout=30, max_bytes=8 * 1024 * 1024, **kwa
             buffers["stderr"].decode("utf-8", "replace"),
         )
     finally:
-        # Also clean up descendants that inherited a pipe on timeout/cancellation.
+        # An exiting macOS process group can reject killpg with EPERM. Fall
+        # back to the owned child, and still reap it without masking the primary
+        # timeout/output error when the child has already exited.
         try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-        process.wait()
-        for stream in (process.stdin, process.stdout, process.stderr):
-            if stream and not stream.closed:
-                stream.close()
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            except PermissionError:
+                try:
+                    process.kill()
+                except (ProcessLookupError, PermissionError):
+                    # wait() distinguishes an exited child from one we cannot kill.
+                    pass
+            try:
+                process.wait(timeout=1)
+            except subprocess.TimeoutExpired as exc:
+                raise NeuronSteerError(
+                    "Could not terminate the worker within the cleanup deadline"
+                ) from exc
+        finally:
+            for stream in (process.stdin, process.stdout, process.stderr):
+                if stream and not stream.closed:
+                    stream.close()

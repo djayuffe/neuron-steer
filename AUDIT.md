@@ -14,6 +14,7 @@ reproduced issues and their fixes; universal model correctness is not establishe
 | Editable source/system-policy changes could mix resumed experiments. | Source and system hashes in v3 identity; optional asset content hashes and shard-index validation. |
 | Single uncontrolled comparisons could imply unsupported improvements. | Repeated seeds, dose sweeps, alternating main-arm order and four explicit control families. |
 | Text heuristics could be mistaken for correctness measurements. | Operator answer keys, truncation-aware scoring, explicit denominators and prompt-cluster uncertainty. |
+| macOS process-group EPERM could mask output-limit errors. | Fall back to owned-child termination, bounded reaping and unconditional pipe cleanup; regression tests. |
 | Forced EOS at the token limit hid possible truncation. | Conservative budget flag regardless of final EOS. |
 | Model generation defaults could return multiple beams/sequences silently. | Explicit single-beam/single-output policy; retain and record other effective defaults. |
 

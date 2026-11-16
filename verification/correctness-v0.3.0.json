@@ -2,7 +2,7 @@
   "version": "0.3.0",
   "date": "2026-11-16",
   "local_suite": {
-    "tests": 83,
+    "tests": 85,
     "failures": 0,
     "skipped": 0,
     "python": "3.14.8",
@@ -88,5 +88,14 @@
     "No demonstrated behavioral improvement",
     "Answer-key matching is not semantic truth verification",
     "v1/v2 checkpoints require fresh report paths"
-  ]
+  ],
+  "process_cleanup": {
+    "failure": "macOS killpg EPERM masked output-limit error",
+    "fix": "owned-child kill fallback, 1-second wait bound, always close pipes",
+    "regressions": [
+      "preserve output-limit error",
+      "terminate direct child on timeout and preserve TimeoutExpired",
+      "successful child reaping despite group EPERM"
+    ]
+  }
 }
