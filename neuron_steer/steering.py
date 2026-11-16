@@ -155,6 +155,34 @@ def transformer_down_proj(block: Any) -> Any:
     raise NeuronSteerError("model block has no supported down_proj weight")
 
 
+def projection_info(module):
+    weight = getattr(module, "weight", None)
+    if getattr(weight, "ndim", 0) != 2:
+        raise NeuronSteerError("projection requires a dense 2-D weight")
+    floating = getattr(weight, "is_floating_point", None)
+    if getattr(weight, "is_quantized", False) or (
+        callable(floating) and not floating()
+    ):
+        raise NeuronSteerError("projection requires floating-point weights")
+    transposed = (hasattr(module, "nx") and hasattr(module, "nf")) or (
+        type(module).__name__ == "Conv1D" and hasattr(module, "nf")
+    )
+    rows, cols = map(int, weight.shape)
+    width, residual = (rows, cols) if transposed else (cols, rows)
+    if (
+        width <= 0
+        or residual <= 0
+        or int(getattr(module, "nx" if transposed else "in_features", width)) != width
+    ):
+        raise NeuronSteerError("unsupported projection dimensions")
+    return {
+        "mlp_width": width,
+        "residual_width": residual,
+        "orientation": "input_output" if transposed else "output_input",
+        "weight_shape": [rows, cols],
+    }
+
+
 def install_steering(
     model: Any,
     encoded: Any,
@@ -239,39 +267,17 @@ def install_steering(
         for spec in specs:
             layer, neuron, dose = spec["layer"], spec["neuron"], spec["dose"]
             down = transformer_down_proj(blocks[layer])
-            weight = getattr(down, "weight", None)
-            if getattr(weight, "ndim", 0) != 2:
+            layout = projection_info(down)
+            weight = down.weight
+            if not 0 <= neuron < layout["mlp_width"]:
                 raise NeuronSteerError(
-                    "neuron steering requires a 2-D down_proj weight (not quantized)"
+                    f"neuron {neuron} is outside layer {layer} down_proj"
                 )
-            if (hasattr(down, "nx") and hasattr(down, "nf")) or (
-                type(down).__name__ == "Conv1D" and hasattr(down, "nf")
-            ):
-                # GPT-2 Conv1D stores weights as (input, output); select a row.
-                input_dim = int(getattr(down, "nx", weight.shape[0]))
-                if weight.shape[0] != input_dim:
-                    raise NeuronSteerError("unsupported down_proj weight orientation")
-                if not 0 <= neuron < input_dim:
-                    raise NeuronSteerError(
-                        f"neuron {neuron} is outside layer {layer} down_proj"
-                    )
-                column = weight[neuron, :].detach()
-            else:
-                input_dim = int(getattr(down, "in_features", weight.shape[1]))
-                if weight.shape[1] != input_dim:
-                    raise NeuronSteerError("unsupported down_proj weight orientation")
-                if not 0 <= neuron < input_dim:
-                    raise NeuronSteerError(
-                        f"neuron {neuron} is outside layer {layer} down_proj"
-                    )
-                column = weight[:, neuron].detach()
-            floating = getattr(weight, "is_floating_point", None)
-            if getattr(weight, "is_quantized", False) or (
-                callable(floating) and not floating()
-            ):
-                raise NeuronSteerError(
-                    "neuron steering requires dense floating-point projection weights"
-                )
+            column = (
+                weight[neuron, :]
+                if layout["orientation"] == "input_output"
+                else weight[:, neuron]
+            ).detach()
             column_norm = float(torch.linalg.vector_norm(column.float()).item())
             if not math.isfinite(column_norm) or column_norm <= 0:
                 raise NeuronSteerError(

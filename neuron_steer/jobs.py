@@ -101,6 +101,10 @@ def checkpoint_identity(job, prompts):
 
 
 def run_job(job):
+    if isinstance(job, dict) and job.get("operation") in ("inspect", "probe"):
+        from .research import run_research
+
+        return run_research(job)
     specs = validate_job(job)
     model = pathlib.Path(job["model"]).expanduser().resolve()
     if not model.is_dir():

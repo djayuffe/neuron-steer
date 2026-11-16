@@ -101,3 +101,12 @@ it cannot be used as a native MLP coordinate merely by copying its number.
 The detailed derivation and execution boundaries are in [design.md](design.md).
 API shapes were checked against the [official documentation](https://docs.neuronpedia.org/api-and-data/api)
 and [endpoint implementation](https://github.com/hijohnnylin/neuronpedia/tree/main/apps/webapp/app/api).
+
+## Local probe context
+
+`neuron-steer probe` accepts repeatable `--reference FEATURE_URL` annotations.
+References appear alongside candidate profiles and in experiment identity without
+an HTTP request. Probe rankings describe native MLP projection coordinates; SAE
+features require their own encoder/decoder and model/layer alignment. An attached
+reference does not establish a mapping. Use explicit Neuronpedia operations here
+for hosted research, then test native-coordinate hypotheses with local controls.

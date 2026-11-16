@@ -128,6 +128,53 @@ def parser():
             p.add_argument(
                 "--order", choices=("alternate", "baseline-first"), default="alternate"
             )
+    for operation in ("inspect", "probe"):
+        p = commands.add_parser(
+            operation,
+            help="Inspect local capabilities"
+            if operation == "inspect"
+            else "Rank observational neuron candidates from explicit prompts",
+        )
+        p.add_argument("--model", required=True)
+        p.add_argument(
+            "--device", choices=("auto", "cpu", "mps", "cuda"), default="auto"
+        )
+        p.add_argument("--timeout", type=float, default=900)
+        p.add_argument("--dry-run", action="store_true")
+        if operation == "inspect":
+            p.add_argument(
+                "--load",
+                action="store_true",
+                help="Load installed weights to verify supported projections; default reads configuration only",
+            )
+        else:
+            p.add_argument("--prompts", required=True)
+            p.add_argument(
+                "--layer", type=int, action="append", dest="layers", required=True
+            )
+            p.add_argument("--top-k", type=int, default=16)
+            p.add_argument("--limit", type=int, default=64)
+            p.add_argument("--max-input-tokens", type=int, default=512)
+            p.add_argument(
+                "--positions", choices=("last", "all", "skip-first"), default="last"
+            )
+            p.add_argument(
+                "--positive", help="Positive category for a signed-activation contrast"
+            )
+            p.add_argument(
+                "--negative", help="Negative category; required with --positive"
+            )
+            p.add_argument(
+                "--system-role", choices=("auto", "merge", "strict"), default="auto"
+            )
+            p.add_argument("--chat-template")
+            p.add_argument("--thinking", action="store_false", dest="no_thinking")
+            p.add_argument(
+                "--asset-identity", choices=("metadata", "sha256"), default="metadata"
+            )
+            p.add_argument(
+                "--reference", dest="references", action="append", default=[]
+            )
     np = commands.add_parser(
         "neuronpedia",
         help="Explicit Neuronpedia API operations; separate from local hooks",
@@ -205,6 +252,27 @@ def main(argv=None):
                 )
                 return 0
             job = {**vars(args), "text": text}
+        elif args.operation in ("inspect", "probe"):
+            from .research import validate_research_job
+
+            job = vars(args).copy()
+            rows = validate_research_job(job)
+            if args.dry_run:
+                print(
+                    json.dumps(
+                        {
+                            "version": __version__,
+                            "dry_run": True,
+                            "job": job,
+                            "prompts_selected": len(rows) if rows else 0,
+                            "model_loaded": False,
+                            "private_history_accessed": False,
+                        },
+                        indent=2,
+                        allow_nan=False,
+                    )
+                )
+                return 0
         else:
             job = vars(args).copy()
             model_path = pathlib.Path(args.model).expanduser()

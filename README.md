@@ -1,11 +1,13 @@
 # neuron-steer
 
-**0.3.0 · Python 3.10+ · macOS/Linux · MIT**
+**0.4.0 · Python 3.10+ · macOS/Linux · MIT**
 
 Explore how temporary changes to a language model's internal computation affect
 its responses. Generate an unhooked baseline, apply explicit MLP projection
 interventions, compare paired outputs, and research features through Neuronpedia.
-The model's weight files stay unchanged.
+Inspect supported projections, discover observational candidates from your own
+prompt categories, and test them with explicit controls. The model's weight files
+stay unchanged.
 
 [ELI5](#eli5) · [Install](#install) · [How it works](#how-it-works) ·
 [Examples](#examples) · [Neuronpedia](#neuronpedia) · [Limits](#limits)
@@ -330,6 +332,68 @@ errors and `merge` selects the merged form directly. `--chat-template NAME`
 selects a named tokenizer template. The resolved template controls whether
 `enable_thinking` is passed; reports distinguish requesting this option from
 verifying that a model actually follows it.
+
+### I. Inspect installed weights and discover candidates
+
+ELI5: before turning a dial, look at which dials respond differently to two kinds
+of questions. That gives you ideas to test. A dial lighting up does not establish
+that turning it will improve the answer.
+
+```sh
+MODEL=/absolute/path/to/your/installed/model
+mkdir -p results
+
+# Configuration only: no model weights or optional runtime imported.
+neuron-steer inspect --model "$MODEL"
+
+# Load existing weights and verify each supported projection and its dimensions.
+neuron-steer inspect --model "$MODEL" --load --timeout 180
+
+# Compare two categories using unmodified prompt forwards; no text is generated.
+neuron-steer probe --model "$MODEL" --layer 0 --top-k 8 \
+  --prompts examples/contrast-prompts.json \
+  --positive arithmetic --negative greeting \
+  --positions last --max-input-tokens 512 --timeout 300 > results/probe.json
+```
+
+`inspect` reports configuration claims separately from verified loaded layouts.
+It finds named templates in tokenizer configuration and external Jinja files.
+`probe` observes the actual inputs to the selected MLP output projections,
+including GPT-2's transposed Conv1D layout. It returns native `layer:neuron`
+coordinates, signed/absolute activation means, projection norms, category means,
+ranking scores, exact prompt/token manifests and research annotations.
+
+Without category options, score = mean absolute activation × projection-vector
+norm. With `--positive`/`--negative`, score = absolute difference of the categories'
+signed mean activations × projection-vector norm. Each prompt has equal weight;
+token positions are averaged within each prompt. Categories are labels you
+supply; these scores do not assign a semantic meaning to a neuron.
+
+`--positions last` (default) observes the last **formatted input** token, often an
+assistant prefix. Use `all` or `skip-first` for other explicit selections. Repeat
+`--layer` for up to eight layers. Bounds are 64 prompts, 64 candidates per layer,
+and 4,096 input tokens per prompt (default 512). Oversized inputs fail without
+silent truncation. Add `--dry-run` to validate the plan without loading weights.
+
+To try the top coordinate with an exploratory dose:
+
+```sh
+TARGET=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["layers"][0]["candidates"][0]["coordinate"] + ":0.1")' results/probe.json)
+neuron-steer generate --model "$MODEL" --neuron "$TARGET" \
+  --prompt 'What is 7 + 8? Reply with only the integer.' --max-tokens 64
+```
+
+The dose above is an example, not a calibrated behavioral recommendation. Use
+`evaluate` with separate validation prompts, repeated seeds, dose scales and
+zero/random/reversed/ablation controls before selecting an intervention. Keep the
+same installed model and inspect the probe's manifest. Candidate ranking is
+observational, includes prompt/template effects, and omits bias contributions,
+interactions and downstream causal effects. Reusing discovery prompts as a final
+benchmark can overstate results.
+
+Add `--reference FEATURE_URL` to a probe to preserve Neuronpedia context without
+fetching or submitting text. Native neuron coordinates remain distinct from SAE
+feature coordinates; there is no automatic conversion between them.
 
 ## Neuronpedia
 

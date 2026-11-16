@@ -23,6 +23,8 @@ jobs:
       - run: neuron-steer neuronpedia link --url https://www.neuronpedia.org/gemma-2-2b/20-gemmascope-res-16k/10956
       - run: neuron-steer generate --model /not-loaded --neuron 0:0:0 --prompt synthetic --reference https://www.neuronpedia.org/gemma-2-2b/20-gemmascope-res-16k/10956 --dry-run
       - run: neuron-steer generate --model /not-loaded --baseline --prompt synthetic --dry-run
+      - run: neuron-steer inspect --model /not-loaded --dry-run
+      - run: neuron-steer probe --model /not-loaded --prompts examples/contrast-prompts.json --layer 0 --positive arithmetic --negative greeting --dry-run
       - run: neuron-steer evaluate --model /not-loaded --neuron 0:0:0 --limit 1 --output /tmp/neuron-steer-ci-preview.json --dry-run
 
   real-transformers:

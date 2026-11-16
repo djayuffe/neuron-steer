@@ -1,6 +1,6 @@
 # Design: local neuron steering and Neuronpedia research
 
-Version 0.3.0 · 2026-11-16
+Version 0.4.0 · 2026-11-16
 
 This document explains what the program actually computes, which component owns
 each step, how results can be reproduced, and where the guarantees end. The CLI
@@ -413,3 +413,67 @@ changes invalidate identity even if the package version is unchanged. JSON is
 saved after a full trial; interrupted partial trials rerun all arms. CI exercises
 core Python/platform variants plus actual tiny random Transformers models under
 two library versions, without downloading pretrained weights.
+
+## 13. Inspect, probe, then validate (0.4.0)
+
+Two research operations use the same bounded worker and offline loader as existing
+jobs. Static `inspect` reads bounded local config/tokenizer metadata, including
+nested text configuration and named external Jinja templates, without importing
+torch or Transformers. Its dimensions are explicitly configuration claims.
+`inspect --load` constructs `LocalRuntime`, enumerates up to 256 decoder blocks,
+and reports each supported/unsupported projection with width and orientation.
+It verifies structural compatibility, not every possible hook execution path.
+
+`projection_info` is shared by inspection, probing and intervention so native
+Linear and GPT-2 Conv1D coordinates use the same validation and orientation.
+Quantized/non-floating weights and invalid dimensions are rejected. Unsupported
+blocks retain diagnostic entries in inspection; selecting one for probing fails.
+
+A probe accepts an explicit prompt file, up to 64 selected records, 1–8 unique
+layers, 1–64 top candidates per layer and at most 4,096 input tokens per prompt
+(default 512). It formats prompts with the same chat/system/thinking policy as
+generation and rejects token/context overflow. Position selection is last
+(default), all, or skip-first (using the sole token for single-token inputs).
+Last refers to the rendered input, including an assistant prefix where present.
+No generated tokens are included. Forward passes use inference mode and disable
+KV caching, resetting the torch seed to zero before each forward. Per-prompt observational hooks are removed in `finally`, including
+shape errors, missing execution and model exceptions. Each projection must execute
+exactly once with `[1, input_tokens, mlp_width]` inputs.
+
+Let `a[p,t,j]` be the projection input activation and `v[j]` its projection vector.
+The uncontrasted score is:
+
+```text
+score[j] = mean_p(mean_selected_t(abs(a[p,t,j]))) × ||v[j]||₂
+```
+
+For operator categories positive/negative, first compute signed activation means
+within each prompt, then equal-prompt-weight means within each category:
+
+```text
+contrast[j] = mean_positive_p(mean_t(a[p,t,j]))
+            − mean_negative_p(mean_t(a[p,t,j]))
+score[j]    = abs(contrast[j]) × ||v[j]||₂
+```
+
+This measures the magnitude of a difference in mean per-neuron projection
+contributions. It does not estimate causal downstream effects. Scores are ranked
+descending, with tied scores ordered by ascending neuron coordinate. Reports retain
+signed contrast, category counts/means, absolute means and norms so rankings can
+be inspected. Full activation tensors remain temporary; only aggregate vectors
+are held between forwards, with top candidates and per-input manifests serialized.
+Bias contributions, cross-neuron interactions, token-specific maxima and uncertainty
+of these observational ranks are not modeled.
+
+Probe manifests include source/asset/runtime identity, exact prompts/renderings,
+input IDs, position counts, layers, ranking policy and category choices. Optional
+Neuronpedia references are preserved annotations and never fetched locally. The
+resulting native coordinates can be passed explicitly to existing generate/evaluate
+jobs with an operator-selected dose. A positive activation contrast does not prove
+that positive additive steering improves the positive category. Discovery data
+must be separated from final validation; use controls and held-out answer keys.
+The library hook and loading contracts follow the official [PyTorch Module API](https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html)
+and [Transformers model API](https://huggingface.co/docs/transformers/main_classes/model).
+
+Version 0.4.0 retains checkpoint format v3. Package/source identity changes mean
+0.3.0 reports require new paths rather than mixed-version resume.

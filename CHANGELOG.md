@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0 — 2026-11-16
+
+Add static and loaded model inspection, external chat-template discovery and
+observational activation probing. Rank native MLP coordinates by contribution
+norm or signed category contrast, with explicit token-position policies, prompt
+weighting, bounded work and full provenance. Share projection-layout validation
+with steering. Preserve Neuronpedia annotations without automatic SAE mapping.
+Add synthetic contrast prompts, real-forward math/cleanup regressions and a
+documented inspect → probe → controlled validation workflow. Checkpoint remains
+v3; changed source/package identity requires fresh paths for 0.3.0 reports.
+
 ## 0.3.0 — 2026-11-16
 
 Fix duplicate chat BOS tokens, real Jinja role rejection, named-template thinking

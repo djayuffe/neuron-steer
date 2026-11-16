@@ -16,3 +16,7 @@ nonzero hook math with synthetic objects and real torch tensors.
 Transformers regressions, a 48-generation tiny-model CLI/resume experiment and
 an installed Qwen zero-dose MPS smoke. Those checks establish execution properties,
 not improved behavior or universal model compatibility.
+
+`expansion-v0.4.0.json` records 99 local tests, independent real-forward probe
+math checks, installed-wheel inspection/probing and a Qwen3.5-4B activation probe.
+Candidate ranks are observations and do not establish behavioral improvement.

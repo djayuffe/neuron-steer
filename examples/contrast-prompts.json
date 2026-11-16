@@ -1,0 +1,6 @@
+[
+  {"category":"arithmetic","prompt":"What is 2 + 2? Reply with only the integer."},
+  {"category":"greeting","prompt":"Say hello to a friend in one short sentence."},
+  {"category":"arithmetic","prompt":"What is 3 * 5? Reply with only the integer."},
+  {"category":"greeting","prompt":"Write a brief friendly morning greeting."}
+]

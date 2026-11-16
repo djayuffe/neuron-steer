@@ -1,0 +1,77 @@
+{
+  "version": "0.4.0",
+  "date": "2026-11-16",
+  "local_suite": {
+    "tests": 99,
+    "failures": 0,
+    "skipped": 0,
+    "python": "3.14.8",
+    "torch": "2.15.0",
+    "transformers": "5.23.0"
+  },
+  "checks": {
+    "ruff": "0.17.5, lint/format passed",
+    "compileall": "passed",
+    "wheel_build": "passed",
+    "isolated_install": "passed",
+    "outside_checkout_cli": "static inspection, loaded inspection, contrast probe passed",
+    "static_optional_imports": "neither torch nor transformers imported"
+  },
+  "new_regressions": [
+    "static inspection without loading",
+    "external template discovery",
+    "invalid plan validation",
+    "category filtering under prompt limit",
+    "malformed configuration",
+    "Linear/Conv1D shared orientation and nonfloating rejection",
+    "loaded capability checks",
+    "independently captured real-forward score and rank comparison",
+    "position policies",
+    "context/layer bounds",
+    "empty rendered input",
+    "failed/bypassed forward cleanup",
+    "recoverable manifests and offline references"
+  ],
+  "cli_smoke": {
+    "model": "tiny random GPT-2, locally created safetensors",
+    "prompts": 4,
+    "candidates": 4,
+    "static_inspect": "passed",
+    "loaded_inspect": "passed",
+    "contrast_probe": "passed",
+    "pretrained_downloads": false
+  },
+  "installed_weight_probe": {
+    "model": "Qwen3.5-4B",
+    "device": "mps",
+    "dtype": "torch.bfloat16",
+    "prompts": 2,
+    "categories": {
+      "arithmetic": 1,
+      "greeting": 1
+    },
+    "layer": 0,
+    "candidates": 8,
+    "top_observed_coordinate": "0:2097",
+    "top_observed_score": 0.010997191071510315,
+    "semantic_or_causal_claim": false,
+    "weights_downloaded": false,
+    "weights_edited": false
+  },
+  "ci": {
+    "workflow": "https://github.com/djayuffe/neuron-steer/actions",
+    "jobs": 8,
+    "real_transformers_versions": [
+      "4.40.2",
+      "5.23.0"
+    ],
+    "status": "see commit-specific workflow"
+  },
+  "limits": [
+    "Observational hypotheses, not causal attribution",
+    "No verified behavioral improvement",
+    "Separate discovery and held-out validation data",
+    "Existing dense Transformers layouts only; no automatic SAE mapping",
+    "Changed package/source identity invalidates old resume"
+  ]
+}

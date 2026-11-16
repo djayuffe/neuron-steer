@@ -13,6 +13,9 @@ and update these guides when behavior changes.
 | `jobs.py` | Local validation, baseline/intervention selection, evaluation, path guards, locks and resume identity. |
 | `runtime.py` | Local weights/templates/devices, context bounds, decoding and hook lifetime. |
 | `steering.py` | Target bounds, projection orientation, calibration and additive hooks. |
+| `research.py` | Static/loaded inspection, observational activation profiles and contrast candidate ranking. |
+| `provenance.py` | Recoverable experiment manifests, source identity and optional asset hashes. |
+| `experiments.py` | Seed/dose trial grids, controls and answer-key matching. |
 | `evaluation.py` | Prompt data, descriptive metrics and escaped Markdown. |
 | `storage.py` | Strict JSON, bounded reads and atomic per-report replacement. |
 | `neuronpedia.py` | Explicit API operations, endpoint/credential/response checks and offline references. |
@@ -42,5 +45,6 @@ regression tests.
 
 CI covers Linux/macOS with Python 3.10, 3.12 and 3.13, pinned linting, package build
 and offline installed-CLI checks. Tensor tests skip when torch is absent; recorded
-local checks cover real tensor math. Historical experiments are not reclassified
+local checks cover real tensor math. Two additional CPU jobs exercise real
+Transformers 4.40.2 and 5.23.0 tiny-model loading, tokenization, hooks and probing. Historical experiments are not reclassified
 as current validation. See [AUDIT.md](AUDIT.md) for scope and residual limits.
