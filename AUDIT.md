@@ -1,28 +1,30 @@
-# Current audit — 0.4.0
+# Current audit — 0.5.0
 
-Date: 2026-11-16. This expansion addresses the missing target-discovery workflow.
-Earlier correctness fixes remain documented in [0.3.0](docs/history/audit-v0.3.0.md).
+Date: 2026-11-17. Scope: persistent local learning and separate artifact export.
+Previous research-path fixes remain in [0.4.0](docs/history/audit-v0.4.0.md).
 
-| Gap | Implemented behavior |
+| Concern | Implemented behavior |
 | --- | --- |
-| Users had to guess projection coordinates. | Static/loaded inspection reports supported layers, dimensions and orientation. |
-| No evidence-based way to prioritize native neuron hypotheses. | Bounded prompt activation profiles and optional category contrasts rank projection contributions. |
-| Separate tools could interpret GPT-2 coordinates differently. | Inspection, probing and interventions share projection-layout validation. |
-| Token-only replay omitted attention masks and token types. | Generation/probe manifests preserve every tokenizer input tensor, dtype and hash; the independent forward check replays all inputs. |
-| Candidate scores could be mistaken for behavioral improvement. | Explicit observational labels, recoverable formulas/counts and controlled held-out validation examples. |
-| New workflows could omit research context or provenance. | Probe references remain annotations; complete prompt/source/model manifests accompany candidates. |
+| Persistent changes could overwrite original weights. | Fresh output directories, source-path guards, cooperative locks and staging publication. |
+| Training could update unintended base parameters. | Frozen base, ordinary LoRA A/B-only trainable-parameter check and explicit dense target selection. |
+| Prompt tokens could contaminate the supervised objective. | Exact prefix rendering, response/EOS labels only, recorded tensor masks and no truncation. |
+| Validation/test leakage could inflate results. | Normalized prompt disjointness and unique final test prompts; semantic independence remains operator responsibility. |
+| An adapter could be loaded onto the wrong base. | Content identity of tracked model/tokenizer assets and adapter file-hash checks before loading. |
+| Saving files could be mistaken for a working export. | Fresh adapter reload/loss checks and standalone model reload with input/log-probability parity gates. |
+| Loss reduction could be mistaken for general quality. | Explicit reference matching/exclusions and no behavioral-improvement certification. |
 
-Real tiny-model tests compare scores/ranks to independently captured projection
-inputs, exercise both weight orientations, position policies, context bounds,
-missing/failed forwards and hook cleanup. Static tests cover offline inspection,
-external templates, malformed config and invalid/category-missing plans. An
-installed Qwen3.5-4B MPS probe checks the live path without pretrained downloads.
-See [verification/expansion-v0.4.0.json](verification/expansion-v0.4.0.json).
+Regression tests use locally generated GPT-2 and Llama safetensors. They check
+training changes, validation loss, untouched source files, response masking,
+unknown/tied modules, incompatible/tampered artifacts, disabled/enabled comparison,
+failed publication cleanup and standalone export without adapter or steering hooks.
+See [verification/adapters-v0.5.0.json](verification/adapters-v0.5.0.json).
 
 ## Boundaries
 
-Probe rankings are observational and dataset/template-dependent. They omit bias,
-interactions and causal validation. Loaded inspection checks structure; a real
-forward is still needed to prove execution. Native MLP neurons are distinct from
-Neuronpedia SAE features. Existing dense-layout, platform, reproducibility and
-filesystem/provenance boundaries still apply; see [design.md](design.md).
+Python 3.11+ and optional training dependencies; one device, batch size one,
+dense ordinary LoRA only. No optimizer resume, distributed training, QLoRA or
+arbitrary third-party adapter import. Export parity checks selected answer-token
+probabilities, not complete behavioral equivalence. SHA256 manifests are not
+signatures or protection from hostile local file races. Hard kills may leave
+unpublished hidden staging directories. Large-model training and MPS/CUDA memory
+fit require separate validation. See [ADAPTERS.md](ADAPTERS.md) for details.

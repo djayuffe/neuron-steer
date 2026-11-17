@@ -1,0 +1,86 @@
+{
+  "version": "0.5.0",
+  "date": "2026-11-17",
+  "local_tests": {
+    "count": 123,
+    "failures": 0,
+    "skipped": 0,
+    "python": "3.14.8",
+    "torch": "2.15.0",
+    "transformers": "5.23.0",
+    "peft": "0.21.3",
+    "accelerate": "1.16.0"
+  },
+  "models_tested": [
+    "tiny randomly initialized GPT-2: Conv1D projections",
+    "tiny randomly initialized Llama: Linear projections"
+  ],
+  "checks": [
+    "only LoRA A/B trainable",
+    "response-only labels with EOS",
+    "validation loss gate and fresh adapter reload",
+    "complete tokenizer replay and prompt-policy inheritance",
+    "disjoint training/validation/test prompts",
+    "gradient checkpointing",
+    "wrong base and changed assets rejected",
+    "identical copied base accepted",
+    "tied/unknown targets rejected",
+    "case/symlink output aliases protected",
+    "unlisted symlinks rejected before hashing outside assets",
+    "manifest size limit matches reader and failed publication cleans staging",
+    "standalone merge parity, reload without adapter or native hooks",
+    "forced model output format for nested Transformers forwards"
+  ],
+  "cli_installed_wheel": {
+    "cli_actions": [
+      "train",
+      "generate-adapter",
+      "evaluate",
+      "merge",
+      "generate-standalone"
+    ],
+    "validation_loss": {
+      "base": 2.083223342895508,
+      "adapter": 2.0435283184051514,
+      "delta": -0.039695024490356445
+    },
+    "export_verification": {
+      "examples": 1,
+      "max_answer_log_probability_error": 0.0,
+      "tolerance": 0.0001,
+      "adapter_required": false,
+      "steering_hooks_required": false,
+      "behavior_improvement_verified": false
+    },
+    "base_files_unchanged": true,
+    "pretrained_downloads": false,
+    "merged_has_adapter_config": false,
+    "standalone_without_peft": "passed"
+  },
+  "package": {
+    "build": "passed",
+    "isolated_install": "passed",
+    "outside_checkout_cli": "passed",
+    "ruff": "0.17.5 lint/format passed",
+    "compileall": "passed"
+  },
+  "documentation": {
+    "rendered_mermaid": 27,
+    "local_links_checked": 93,
+    "issues": []
+  },
+  "ci": {
+    "workflow": "https://github.com/djayuffe/neuron-steer/actions",
+    "jobs": 9,
+    "training_job": "CPU, Python 3.12, torch 2.6.0, Transformers 5.23.0, PEFT 0.21.3, Accelerate 1.16.0",
+    "status": "see commit-specific workflow"
+  },
+  "limits": [
+    "Only synthetic checkpoints were trained; installed user models unchanged",
+    "No pretrained weight downloads",
+    "No general behavioral improvement certified",
+    "Dense single-device LoRA only; no QLoRA/distributed/optimizer resume",
+    "Merge checks selected answer-token log probabilities, not every possible output",
+    "Content manifests are not cryptographic signatures"
+  ]
+}

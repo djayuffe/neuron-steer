@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.0 — 2026-11-17
+
+Add optional local LoRA train/evaluate/generate/merge operations. Train response-only
+labels against frozen base parameters, enforce disjoint data and validation-loss
+gates, verify fresh adapter reload, and publish fresh managed artifacts with full
+asset hashes. Add independent paired adapter evaluation and standalone safetensors
+export with tokenization/log-probability checks after reload. Original files stay
+unchanged. Dense Linear/Conv1D targets are supported; tied/quantized targets fail.
+Training requires Python 3.11+ and the optional training extra. Core remains 3.10+.
+Native checkpoint format remains v3, but changed source/package identity requires
+fresh report paths. Managed adapter artifacts introduce their separate version 1.
+
 ## 0.4.0 — 2026-11-16
 
 Add static and loaded model inspection, external chat-template discovery and

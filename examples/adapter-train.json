@@ -1,0 +1,10 @@
+[
+  {
+    "prompt": "How should I check a new model change?",
+    "response": "Compare it with the baseline on separate validation questions. Record the settings, inspect the answers, and check for regressions."
+  },
+  {
+    "prompt": "Explain a model activation in simple terms.",
+    "response": "An activation is a temporary number the model produces while processing an input. It is different from a saved model weight."
+  }
+]

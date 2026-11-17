@@ -172,9 +172,17 @@ def inspect_model(job):
             raise NeuronSteerError(
                 "model exceeds the supported 256-layer inspection bound"
             )
+        module_paths = {
+            id(module): name for name, module in runtime.model.named_modules()
+        }
         for layer, block in enumerate(blocks):
             try:
-                info = projection_info(transformer_down_proj(block))
+                module = transformer_down_proj(block)
+                info = {
+                    **projection_info(module),
+                    "projection_module_path": module_paths.get(id(module)),
+                    "projection_module_class": type(module).__name__,
+                }
                 reply["layers"].append({"layer": layer, "supported": True, **info})
             except NeuronSteerError as exc:
                 reply["layers"].append(

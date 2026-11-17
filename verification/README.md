@@ -30,3 +30,8 @@ was unchanged. See [the visual guide](../VISUAL_GUIDE.md).
 ELI5 callouts, 18px diagram-label checks, all 26 rendered diagrams, 73 checked
 links/anchors, preserved heading links, and desktop/phone previews with technical
 sections both collapsed and expanded. Markdown body fonts remain viewer-controlled.
+
+`adapters-v0.5.0.json` records 123 local tests, real synthetic GPT-2/Llama
+training/merge checks, and the installed-wheel CLI chain. The final standalone
+checkpoint was also generated from a runtime with PEFT absent. These are
+functional persistence checks, not evidence of general behavioral improvement.

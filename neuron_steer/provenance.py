@@ -92,7 +92,15 @@ def manifest(job, prompts=None):
             entry["sha256"] = hash_file(path)
         assets.append(entry)
     versions = {}
-    for name in ("torch", "transformers", "tokenizers", "safetensors", "jinja2"):
+    for name in (
+        "torch",
+        "transformers",
+        "tokenizers",
+        "safetensors",
+        "jinja2",
+        "peft",
+        "accelerate",
+    ):
         try:
             versions[name] = importlib.metadata.version(name)
         except importlib.metadata.PackageNotFoundError:

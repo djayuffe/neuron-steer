@@ -1,6 +1,6 @@
 # Design: local neuron steering and Neuronpedia research
 
-Version 0.4.0 · 2026-11-16
+Version 0.5.0 · 2026-11-17
 
 This document explains what the program actually computes, which component owns
 each step, how results can be reproduced, and where the guarantees end. The CLI
@@ -18,13 +18,13 @@ Use [the maintainer overview](ARCHITECTURE.md) for module ownership and developm
 ## 1. Goals and boundaries
 
 > **ELI5:** The tool can look at the model, watch its activity, or try a temporary
-> nudge. It saves the results, not new model weights.
+> nudge. Research commands save results. Explicit adapter operations can save learned patches and new model copies.
 
 Static inspection reads configuration without loading weights. Other local
 research paths load an existing Transformers causal-language-model checkpoint
 to inspect supported projections, profile activations or generate responses.
 Steered generation adds calibrated projection vectors through temporary hooks. Evaluation compares the same explicit prompt under an unhooked
-baseline and the chosen intervention. No model-weight file is edited.
+baseline and the chosen intervention. Existing base-model files are not overwritten; the adapter workflow writes new artifacts.
 
 The Neuronpedia path exposes public model/source metadata, feature dashboards,
 explanation search, activation analysis and service-side steering. It works
@@ -67,6 +67,9 @@ flowchart TB
   R --> I["inspect without --load<br/>Read bounded local config"]:::local
   R --> L["Loaded inspect / probe / generate / evaluate<br/>LocalRuntime: installed offline weights"]:::local
   R --> N["Explicit neuronpedia API<br/>Verified transport; no local model"]:::remote
+  R --> A["Adapter operations<br/>Local PEFT workflow"]:::choice
+  A --> O
+  A --> F["Fresh adapter/model artifact"]:::evidence
   I --> O["Structured evidence or diagnostic"]:::evidence
   L --> O
   N --> O
@@ -90,6 +93,7 @@ flowchart TB
 | `jobs.py` | Local-job validation, annotation normalization, model/report paths, paired evaluation and checkpoint identity. |
 | `runtime.py` | Optional library imports, local loading, templates, device/context selection, sampling and hook lifetime. |
 | `steering.py` | Target parser, supported module layout discovery, calibration and additive hooks. |
+| `adapters.py` | Response-only LoRA training, managed artifact integrity, held-out evaluation and standalone merge verification. |
 | `research.py` | Static/loaded inspection, bounded activation profiles and category-contrast rankings. |
 | `experiments.py` | Seed/dose grids, explicit control arms and answer-key matching. |
 | `provenance.py` | Recoverable manifests, source hashes and optional asset content identity. |
@@ -709,3 +713,49 @@ and [Transformers model API](https://huggingface.co/docs/transformers/main_class
 
 Version 0.4.0 retains checkpoint format v3. Package/source identity changes mean
 0.3.0 reports require new paths rather than mixed-version resume.
+
+## 15. Persistent learned variants (0.5.0)
+
+> **ELI5:** learn a small patch, test it on new questions, and optionally build it
+> into a new model copy. Keep the original model available for comparison.
+
+See [ADAPTERS.md](ADAPTERS.md) for the canonical workflow, flags and artifact format.
+`adapter train/evaluate/generate/merge` dispatch through the bounded worker with
+optional PEFT imports and offline flags. Core/dry-run paths remain dependency-light.
+The training extra requires Python 3.11+; original core compatibility remains 3.10+.
+
+Training renders the exact generation prefix, encodes the response separately
+without extra special tokens, appends EOS as needed, and masks prefix labels with
+-100. It preserves tokenizer masks/types, rejects overflow and caps combined data
+at 200,000 encoded tokens before accumulating more examples. Each AdamW step uses
+one example; only ordinary LoRA A/B parameters may remain trainable. LoRA dropout
+is zero, gradient norm is clipped at one, and optional non-reentrant activation
+checkpointing disables KV caching for forwards. Seeds and reshuffle order/losses
+are recorded. Non-finite values fail; optimizer states are not exported/resumed.
+
+Validation loss is weighted by supervised response/EOS token count. The default
+regression allowance is zero. Fresh adapter deserialization against a freshly
+loaded base must reproduce loss within a recorded dtype-dependent tolerance.
+Final adapter evaluation requires unique prompts disjoint from training and
+validation, pairs adapter-disabled/enabled generations and applies budget-aware
+reference matching. It has its own fresh JSON artifact, without native-grid
+resume/bootstrap features. Generation inherits saved prompt policy by default.
+
+Managed artifacts require complete local safetensors/config files and recorded
+asset hashes. Base identity compares tracked relative paths, sizes and SHA256,
+excluding absolute paths and mtimes so identical copies can work. This is not
+signed authenticity. Selected dense Linear/Conv1D targets with tied weights are
+rejected because merging can change other consumers of a shared parameter.
+
+Outputs acquire a cooperative path lock and stage into a sibling directory.
+Training publishes only after its loss/reload gates. Merge performs safe_merge,
+saves tokenizer/model, releases model memory and reloads through LocalRuntime.
+Up to four saved validation examples must preserve tokenization and supervised
+answer-token log probabilities within tolerance. This verifies selected numeric
+behavior after serialization without adapter/native steering requirements; it
+neither checks every logit nor certifies behavioral improvement. Failed checks
+remove staging; hard kills can leave ignored hidden partial directories.
+
+Original weight/input paths cannot be overwritten or used as output containers.
+No existing full checkpoint is modified in place, no pretrained weights are
+fetched, and Neuronpedia feature indices are not converted into trained adapters.

@@ -84,8 +84,8 @@ def atomic_text(path, text):
             os.unlink(name)
 
 
-def write_json(path, payload):
+def write_json(path, payload, max_bytes=128 * 1024 * 1024):
     text = json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
-    if len(text.encode("utf-8")) > 128 * 1024 * 1024:
-        raise NeuronSteerError("checkpoint exceeds the 128 MiB limit")
+    if len(text.encode("utf-8")) > max_bytes:
+        raise NeuronSteerError(f"JSON exceeds its {max_bytes:,}-byte limit")
     atomic_text(path, text)

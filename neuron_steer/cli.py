@@ -19,7 +19,7 @@ from .storage import strict_json
 def parser():
     root = argparse.ArgumentParser(
         prog="neuron-steer",
-        description="Explicit local Transformers neuron steering; temporary hooks, no weight edits.",
+        description="Local model inspection, temporary steering and separately exported LoRA variants.",
     )
     root.add_argument("--version", action="version", version=__version__)
     commands = root.add_subparsers(dest="operation", required=True)
@@ -175,6 +175,88 @@ def parser():
             p.add_argument(
                 "--reference", dest="references", action="append", default=[]
             )
+    adapter = commands.add_parser(
+        "adapter",
+        help="Train, evaluate, use and merge local LoRA adapters into fresh artifacts",
+    )
+    actions = adapter.add_subparsers(dest="action", required=True)
+    for action in ("train", "evaluate", "generate", "merge"):
+        p = actions.add_parser(action)
+        p.add_argument("--model", required=True)
+        p.add_argument(
+            "--device", choices=("auto", "cpu", "mps", "cuda"), default="auto"
+        )
+        p.add_argument("--timeout", type=float, default=900)
+        p.add_argument("--dry-run", action="store_true")
+        p.add_argument("--seed", type=int, default=0)
+        if action != "merge":
+            p.add_argument(
+                "--system-role",
+                choices=("auto", "merge", "strict"),
+                default=argparse.SUPPRESS,
+            )
+            p.add_argument("--chat-template", default=argparse.SUPPRESS)
+            thinking = p.add_mutually_exclusive_group()
+            thinking.add_argument(
+                "--thinking",
+                action="store_false",
+                dest="no_thinking",
+                default=argparse.SUPPRESS,
+            )
+            thinking.add_argument(
+                "--no-thinking",
+                action="store_true",
+                dest="no_thinking",
+                default=argparse.SUPPRESS,
+            )
+        if action != "generate":
+            p.add_argument(
+                "--output-dir",
+                required=True,
+                help="Fresh artifact directory; never overwrites model or inputs",
+            )
+        if action == "train":
+            p.add_argument("--max-seq-length", type=int, default=512)
+            p.add_argument("--train-data", required=True)
+            p.add_argument("--validation-data", required=True)
+            p.add_argument(
+                "--target-module", dest="target_modules", action="append", required=True
+            )
+            p.add_argument("--rank", type=int, default=8)
+            p.add_argument("--alpha", type=int, default=16)
+            p.add_argument("--steps", type=int, default=100)
+            p.add_argument("--learning-rate", type=float, default=0.0001)
+            p.add_argument(
+                "--max-validation-regression",
+                type=float,
+                default=0.0,
+                help="Allowed increase in held-out answer-token loss; default rejects regressions",
+            )
+            p.add_argument("--gradient-checkpointing", action="store_true")
+        else:
+            p.add_argument(
+                "--adapter",
+                required=True,
+                help="Managed local adapter from adapter train",
+            )
+        if action in ("generate", "evaluate"):
+            p.add_argument("--max-tokens", type=int, default=64)
+            p.add_argument("--temperature", type=float, default=0)
+            p.add_argument("--context-size", type=int, default=0)
+        if action == "generate":
+            source = p.add_mutually_exclusive_group(required=True)
+            source.add_argument("--prompt")
+            source.add_argument("--stdin", action="store_true")
+        elif action == "evaluate":
+            p.add_argument("--prompts", required=True)
+            p.add_argument("--limit", type=int, default=20)
+        elif action == "merge":
+            p.add_argument(
+                "--tolerance",
+                type=float,
+                default=0.05,
+                help="Maximum answer-token log-probability difference after standalone reload",
+            )
     np = commands.add_parser(
         "neuronpedia",
         help="Explicit Neuronpedia API operations; separate from local hooks",
@@ -252,6 +334,31 @@ def main(argv=None):
                 )
                 return 0
             job = {**vars(args), "text": text}
+        elif args.operation == "adapter":
+            from .adapters import validate_adapter_job
+
+            job = vars(args).copy()
+            validate_adapter_job(job, require_prompt=False)
+            if args.action == "generate" and args.stdin:
+                job["prompt"] = read_prompt(deadline)
+            selected = validate_adapter_job(job)
+            if args.dry_run:
+                print(
+                    json.dumps(
+                        {
+                            "version": __version__,
+                            "dry_run": True,
+                            "job": job,
+                            "preflight": selected,
+                            "model_loaded": False,
+                            "base_files_modified": False,
+                            "private_history_accessed": False,
+                        },
+                        indent=2,
+                        allow_nan=False,
+                    )
+                )
+                return 0
         elif args.operation in ("inspect", "probe"):
             from .research import validate_research_job
 

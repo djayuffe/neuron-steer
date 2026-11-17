@@ -1,0 +1,6 @@
+[
+  {
+    "prompt": "What makes a model comparison useful?",
+    "response": "Use the same conditions, separate validation questions, and clear scoring rules. Review the full answers and any regressions."
+  }
+]

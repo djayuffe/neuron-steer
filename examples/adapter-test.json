@@ -1,0 +1,10 @@
+[
+  {
+    "category": "explanation",
+    "prompt": "How would you explain a model weight to a beginner?"
+  },
+  {
+    "category": "evaluation",
+    "prompt": "Why should discovery questions differ from final test questions?"
+  }
+]

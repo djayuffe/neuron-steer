@@ -211,3 +211,11 @@ an HTTP request. Probe rankings describe native MLP projection coordinates; SAE
 features require their own encoder/decoder and model/layer alignment. An attached
 reference does not establish a mapping. Use explicit Neuronpedia operations here
 for hosted research, then test native-coordinate hypotheses with local controls.
+
+## Persistent changes are a separate local workflow
+
+The [adapter workflow](ADAPTERS.md) trains from explicit local prompt/response
+examples. It does not call the Neuronpedia client or treat a feature index as a
+native trainable coordinate. Service-side steering and a saved reference do not
+create a permanently modified local model. Keep source/model/feature alignment
+explicit when turning research into training hypotheses.

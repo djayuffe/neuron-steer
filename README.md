@@ -1,11 +1,12 @@
 # neuron-steer
 
-**0.4.0 · Python 3.10+ · macOS/Linux · MIT**
+**0.5.0 · Python 3.10+ · macOS/Linux · MIT**
 
 Explore what changes when you temporarily nudge a language model’s internal
 signals. Use installed local weights to inspect the model, find candidates,
 generate answers and run controlled comparisons. Add research context through
-Neuronpedia. **The model’s saved weight files stay unchanged.**
+Neuronpedia. **Original model files are preserved.** A separate [LoRA workflow](ADAPTERS.md)
+can learn and export lasting changes into new artifacts.
 
 [Install](#install) · [ELI5](#eli5) · [Visual guide](VISUAL_GUIDE.md) ·
 [Examples](#examples) · [Technical design](design.md)
@@ -17,6 +18,7 @@ Neuronpedia. **The model’s saved weight files stay unchanged.**
 | Install and try the CLI | [Installation](#install), then [a no-weights preview](#a-preview-an-unhooked-baseline-without-weights) |
 | Understand the idea | [ELI5 below](#eli5) or the [beginner visual path](VISUAL_GUIDE.md#choose-your-reading-path) |
 | Discover and test candidates | [Inspection and probing](#i-inspect-installed-weights-and-discover-candidates) |
+| Learn and export a lasting change | [LoRA adapters and standalone models](ADAPTERS.md) |
 | Understand the implementation | [Detailed design](design.md) |
 
 ## Install
@@ -94,8 +96,9 @@ positions; understanding their effect requires experiments. A change might alter
 word choice, style, coherence or factual reliability, and it might have little
 visible effect on a particular question.
 
-The intervention lasts for the current generation. It does not rewrite the
-model's saved weights or train a new model. Neuronpedia helps you explore research
+Temporary native steering lasts for the current generation and does not train
+weights. The separate [adapter workflow](ADAPTERS.md) learns a saved LoRA patch
+and can merge it into a fresh standalone model copy. Neuronpedia helps you explore research
 about model features; its feature coordinates need their own model/SAE context.
 
 **Three useful words:** weights are the model’s saved settings; activations are
@@ -137,6 +140,7 @@ flowchart LR
   Q --> G["generate<br/>Write one response"]:::local
   Q --> E["evaluate<br/>Compare paired trials"]:::evidence
   Q --> N["neuronpedia<br/>Explore feature research"]:::remote
+  Q --> A["adapter<br/>Train and export variants"]:::choice
   classDef input fill:#DBEAFE,stroke:#2563EB,color:#172554,stroke-width:2px;
   classDef local fill:#CCFBF1,stroke:#0F766E,color:#134E4A,stroke-width:2px;
   classDef choice fill:#FEF3C7,stroke:#B45309,color:#78350F,stroke-width:2px;
@@ -523,6 +527,19 @@ Add `--reference FEATURE_URL` to a probe to preserve Neuronpedia context without
 fetching or submitting text. Native neuron coordinates remain distinct from SAE
 feature coordinates; there is no automatic conversion between them.
 
+## Lasting learned changes
+
+> **ELI5:** steering is a temporary nudge; a LoRA adapter is a learned patch;
+> merging saves that patch into a new full model. The original files remain intact.
+
+Use **Python 3.11+** and `python -m pip install -e '.[training]'`. The new commands
+are `adapter train`, `adapter evaluate`, `adapter generate` and `adapter merge`.
+They require explicit local data and write only fresh artifacts. Training does
+not automatically turn a neuron/SAE coordinate into a permanent edit.
+
+See [the complete adapter guide](ADAPTERS.md) for data formats, loss gates,
+independent evaluation, export verification and copy/paste commands.
+
 ## Neuronpedia
 
 Explore public model/source metadata or a feature dashboard:
@@ -591,6 +608,7 @@ output is not guaranteed to produce a better or more meaningful intervention.
 
 | Document | Purpose |
 | --- | --- |
+| [ADAPTERS.md](ADAPTERS.md) | Local supervised LoRA training, held-out comparison and verified standalone export. |
 | [VISUAL_GUIDE.md](VISUAL_GUIDE.md) | Colorful diagrams, ELI5 explanations, command map, glossary and a worked research workflow. |
 | [design.md](design.md) | Detailed algorithm, tensor shapes, local/API data flow and checkpoint semantics. |
 | [NEURONPEDIA.md](NEURONPEDIA.md) | API workflow, self-hosting and transport boundaries. |

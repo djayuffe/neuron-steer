@@ -18,6 +18,7 @@ short version first and open the details when you need them.
 | Understand the idea in a few minutes | [The basic idea](#1-the-basic-idea) → [Choose a command](#2-choose-a-command) → [The workflow](#3-the-complete-research-workflow) |
 | Understand what happens inside the model | [Text inputs](#4-from-text-to-model-inputs) → [Coordinates](#5-what-a-neuron-coordinate-means) → [Dose](#6-dose-and-calibration) → [Hooks](#7-temporary-hook-lifetime) |
 | Plan a useful experiment | [Probing](#8-how-probing-finds-candidates) → [Controls](#9-seeds-dose-sweeps-and-controls) → [Scoring](#10-what-the-scores-establish) |
+| Make a learned change persist | [LoRA training and standalone export](ADAPTERS.md) |
 | Understand saved results and integrations | [Manifests](#11-manifests-and-reproducibility) → [Resume](#12-saving-and-resuming-experiments) → [Neuronpedia](#13-neuronpedia-and-coordinate-systems) |
 
 <details>
@@ -103,7 +104,8 @@ Imagine a storyteller with a mixing desk inside. A baseline asks the question
 with the desk untouched. Steering temporarily adds a signal at a chosen place.
 The comparison shows what happened for this question, dose, model and settings.
 
-The saved weights do not change. Changed wording alone does not show improved
+Temporary steering preserves saved weights. The separate [LoRA workflow](ADAPTERS.md)
+can learn and export a new model variant; it preserves the original files. Changed wording alone does not show improved
 accuracy, safety or quality. Read the full answers and use explicit measurements.
 
 ## 2. Choose a command
@@ -119,6 +121,7 @@ accuracy, safety or quality. Read the full answers and use explicit measurements
 | `generate --baseline` | Write one response to an explicit prompt without steering. |
 | `generate --neuron L:N:d` | Write one response with your chosen temporary intervention. |
 | `evaluate` | Compare prompts under paired conditions and save reports/checkpoints. |
+| `adapter train/evaluate/generate/merge` | Learn a LoRA patch, compare it, and export a separate standalone model. |
 | `neuronpedia` | Look up research IDs/features or analyze explicitly supplied text on the service. |
 
 <details>
@@ -148,6 +151,7 @@ flowchart LR
   Q --> G["generate<br/>Write one response"]:::local
   Q --> E["evaluate<br/>Compare paired trials"]:::evidence
   Q --> N["neuronpedia<br/>Explore feature research"]:::remote
+  Q --> A["adapter<br/>Train and export variants"]:::choice
   classDef input fill:#DBEAFE,stroke:#2563EB,color:#172554,stroke-width:2px;
   classDef local fill:#CCFBF1,stroke:#0F766E,color:#134E4A,stroke-width:2px;
   classDef choice fill:#FEF3C7,stroke:#B45309,color:#78350F,stroke-width:2px;
@@ -207,8 +211,10 @@ those targets.
 
 Use discovery prompts to propose candidates, then separate validation prompts
 to test their effects. The program does not automatically pick the best semantic
-feature, optimize a dose, train weights or reserve a hidden validation split.
-You choose those experimental decisions explicitly.
+feature, optimize a dose or reserve a hidden validation split. The research workflow does
+not train weights; explicit `adapter train` is a separate operation.
+You choose those experimental decisions explicitly. Version 0.5.0 adds a separate
+[supervised adapter workflow](ADAPTERS.md) when you want learned changes to persist.
 
 Neuronpedia can supply research context at any stage. A reference URL does not
 change local targets, and a native neuron is not automatically an SAE feature.

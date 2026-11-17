@@ -101,6 +101,10 @@ def checkpoint_identity(job, prompts):
 
 
 def run_job(job):
+    if isinstance(job, dict) and job.get("operation") == "adapter":
+        from .adapters import run_adapter
+
+        return run_adapter(job)
     if isinstance(job, dict) and job.get("operation") in ("inspect", "probe"):
         from .research import run_research
 

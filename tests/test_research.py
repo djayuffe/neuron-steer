@@ -191,6 +191,10 @@ class RealProbeTests(unittest.TestCase):
             self.assertTrue(result["projection_support_verified"])
             self.assertEqual(result["layers"][0]["orientation"], "input_output")
             self.assertEqual(result["layers"][0]["mlp_width"], 32)
+            self.assertEqual(
+                result["layers"][0]["projection_module_path"],
+                "transformer.h.0.mlp.c_proj",
+            )
 
     def test_contrast_scores_match_real_forward_inputs(self):
         torch = integration.torch

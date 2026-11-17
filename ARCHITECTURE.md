@@ -14,6 +14,7 @@ and update these guides when behavior changes.
 | `jobs.py` | Local validation, baseline/intervention selection, evaluation, path guards, locks and resume identity. |
 | `runtime.py` | Local weights/templates/devices, context bounds, decoding and hook lifetime. |
 | `steering.py` | Target bounds, projection orientation, calibration and additive hooks. |
+| `adapters.py` | Optional PEFT training, response-only loss, immutable artifacts, adapter evaluation and verified standalone export. |
 | `research.py` | Static/loaded inspection, observational activation profiles and contrast candidate ranking. |
 | `provenance.py` | Recoverable experiment manifests, source identity and optional asset hashes. |
 | `experiments.py` | Seed/dose trial grids, controls and answer-key matching. |
@@ -64,3 +65,11 @@ advanced derivations in labeled expandable sections, preserve heading anchors,
 and group glossary terms by topic. GitHub controls Markdown body fonts; Mermaid
 blocks explicitly use 18px sans-serif labels with consistent node spacing. Keep
 colors theme-independent and check light/dark previews after layout changes.
+
+## Adapter development checks
+
+Live training tests require Python 3.11+ and `.[training]`. Test on locally created
+random GPT-2 and Llama checkpoints, not personal weights. Verify frozen original
+files, prompt-label masking, loss/reload gates, adapter-disabled comparisons,
+wrong-base/tampered artifact rejection, and standalone merge parity. The training
+CI job uses Transformers 5.23.0, PEFT 0.21.3 and Accelerate 1.16.0 on CPU.
